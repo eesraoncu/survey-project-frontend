@@ -1,13 +1,11 @@
 import { Outlet } from 'react-router-dom'
 import Navbar from './Navbar'
 
-function Layout() {
+const Layout = () => {
   return (
-    <div>
+    <div className="min-h-screen">
       <Navbar />
-      <main style={{ padding: '16px', maxWidth: 960, margin: '0 auto' }}>
-        <Outlet />
-      </main>
+      <Outlet />
     </div>
   )
 }

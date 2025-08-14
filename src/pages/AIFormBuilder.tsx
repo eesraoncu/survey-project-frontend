@@ -19,14 +19,283 @@ const AIFormBuilder: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const navigate = useNavigate();
 
+  // AI ile anket oluşturma fonksiyonu
+  const generateFormWithAI = (userPrompt: string) => {
+    const promptLower = userPrompt.toLowerCase();
+    let formTitle = '';
+    let formDescription = '';
+    let questions = [];
+
+    // Müşteri memnuniyet anketi
+    if (promptLower.includes('müşteri') || promptLower.includes('memnuniyet') || promptLower.includes('hizmet')) {
+      formTitle = 'Müşteri Memnuniyet Anketi';
+      formDescription = 'Hizmet kalitemizi değerlendirmek için bu anketi doldurun.';
+      questions = [
+        {
+          id: Date.now().toString(),
+          type: 'rating',
+          title: 'Genel memnuniyet seviyenizi değerlendirin',
+          required: true,
+          description: '1-5 arası puan verin'
+        },
+        {
+          id: (Date.now() + 1).toString(),
+          type: 'radio',
+          title: 'Hizmet kalitesini nasıl değerlendirirsiniz?',
+          required: true,
+          options: ['Çok İyi', 'İyi', 'Orta', 'Kötü', 'Çok Kötü']
+        },
+        {
+          id: (Date.now() + 2).toString(),
+          type: 'text',
+          title: 'Hangi konularda iyileştirme yapmamızı önerirsiniz?',
+          required: false,
+          placeholder: 'Önerilerinizi yazın...'
+        },
+        {
+          id: (Date.now() + 3).toString(),
+          type: 'checkbox',
+          title: 'Hangi hizmetlerimizi kullandınız?',
+          required: true,
+          options: ['Ürün Satışı', 'Teknik Destek', 'Danışmanlık', 'Eğitim', 'Diğer']
+        },
+        {
+          id: (Date.now() + 4).toString(),
+          type: 'radio',
+          title: 'Bizi başkalarına tavsiye eder misiniz?',
+          required: true,
+          options: ['Kesinlikle Evet', 'Evet', 'Belki', 'Hayır', 'Kesinlikle Hayır']
+        }
+      ];
+    }
+    // Çalışan performans anketi
+    else if (promptLower.includes('çalışan') || promptLower.includes('performans') || promptLower.includes('değerlendirme')) {
+      formTitle = 'Çalışan Performans Değerlendirme Anketi';
+      formDescription = 'Çalışan performansını değerlendirmek için bu anketi doldurun.';
+      questions = [
+        {
+          id: Date.now().toString(),
+          type: 'text',
+          title: 'Çalışan Adı',
+          required: true,
+          placeholder: 'Ad ve soyad girin...'
+        },
+        {
+          id: (Date.now() + 1).toString(),
+          type: 'rating',
+          title: 'İş performansını değerlendirin',
+          required: true,
+          description: '1-5 arası puan verin'
+        },
+        {
+          id: (Date.now() + 2).toString(),
+          type: 'radio',
+          title: 'Takım çalışması nasıl?',
+          required: true,
+          options: ['Mükemmel', 'İyi', 'Orta', 'Zayıf', 'Çok Zayıf']
+        },
+        {
+          id: (Date.now() + 3).toString(),
+          type: 'text',
+          title: 'Güçlü yanları nelerdir?',
+          required: false,
+          placeholder: 'Güçlü yanları yazın...'
+        },
+        {
+          id: (Date.now() + 4).toString(),
+          type: 'text',
+          title: 'Geliştirilmesi gereken alanlar',
+          required: false,
+          placeholder: 'Geliştirilmesi gereken alanları yazın...'
+        }
+      ];
+    }
+    // Ürün lansmanı anketi
+    else if (promptLower.includes('ürün') || promptLower.includes('lansman') || promptLower.includes('geri bildirim')) {
+      formTitle = 'Ürün Lansmanı Geri Bildirim Anketi';
+      formDescription = 'Yeni ürünümüz hakkında görüşlerinizi almak için bu anketi doldurun.';
+      questions = [
+        {
+          id: Date.now().toString(),
+          type: 'radio',
+          title: 'Ürünü beğendiniz mi?',
+          required: true,
+          options: ['Çok Beğendim', 'Beğendim', 'Kararsızım', 'Beğenmedim', 'Hiç Beğenmedim']
+        },
+        {
+          id: (Date.now() + 1).toString(),
+          type: 'rating',
+          title: 'Ürün kalitesini değerlendirin',
+          required: true,
+          description: '1-5 arası puan verin'
+        },
+        {
+          id: (Date.now() + 2).toString(),
+          type: 'text',
+          title: 'Ürünün en iyi özelliği nedir?',
+          required: false,
+          placeholder: 'En iyi özelliği yazın...'
+        },
+        {
+          id: (Date.now() + 3).toString(),
+          type: 'text',
+          title: 'Ürünün geliştirilmesi gereken yönü nedir?',
+          required: false,
+          placeholder: 'Geliştirilmesi gereken yönü yazın...'
+        },
+        {
+          id: (Date.now() + 4).toString(),
+          type: 'radio',
+          title: 'Bu ürünü satın alır mısınız?',
+          required: true,
+          options: ['Kesinlikle Evet', 'Evet', 'Belki', 'Hayır', 'Kesinlikle Hayır']
+        }
+      ];
+    }
+    // Etkinlik anketi
+    else if (promptLower.includes('etkinlik') || promptLower.includes('kayıt') || promptLower.includes('organizasyon')) {
+      formTitle = 'Etkinlik Kayıt Formu';
+      formDescription = 'Etkinliğimize katılmak için bu formu doldurun.';
+      questions = [
+        {
+          id: Date.now().toString(),
+          type: 'text',
+          title: 'Ad Soyad',
+          required: true,
+          placeholder: 'Ad ve soyadınızı girin...'
+        },
+        {
+          id: (Date.now() + 1).toString(),
+          type: 'text',
+          title: 'E-posta Adresi',
+          required: true,
+          placeholder: 'E-posta adresinizi girin...'
+        },
+        {
+          id: (Date.now() + 2).toString(),
+          type: 'text',
+          title: 'Telefon Numarası',
+          required: false,
+          placeholder: 'Telefon numaranızı girin...'
+        },
+        {
+          id: (Date.now() + 3).toString(),
+          type: 'radio',
+          title: 'Katılım durumu',
+          required: true,
+          options: ['Kesinlikle Katılacağım', 'Muhtemelen Katılacağım', 'Kararsızım', 'Muhtemelen Katılmayacağım', 'Katılmayacağım']
+        },
+        {
+          id: (Date.now() + 4).toString(),
+          type: 'text',
+          title: 'Özel istekleriniz var mı?',
+          required: false,
+          placeholder: 'Özel isteklerinizi yazın...'
+        }
+      ];
+    }
+    // Eğitim anketi
+    else if (promptLower.includes('eğitim') || promptLower.includes('kurs') || promptLower.includes('seminer')) {
+      formTitle = 'Eğitim Değerlendirme Anketi';
+      formDescription = 'Eğitim programımızı değerlendirmek için bu anketi doldurun.';
+      questions = [
+        {
+          id: Date.now().toString(),
+          type: 'rating',
+          title: 'Eğitimin genel kalitesini değerlendirin',
+          required: true,
+          description: '1-5 arası puan verin'
+        },
+        {
+          id: (Date.now() + 1).toString(),
+          type: 'radio',
+          title: 'Eğitmen performansı nasıldı?',
+          required: true,
+          options: ['Mükemmel', 'İyi', 'Orta', 'Zayıf', 'Çok Zayıf']
+        },
+        {
+          id: (Date.now() + 2).toString(),
+          type: 'text',
+          title: 'En faydalı bulduğunuz konu nedir?',
+          required: false,
+          placeholder: 'En faydalı konuyu yazın...'
+        },
+        {
+          id: (Date.now() + 3).toString(),
+          type: 'text',
+          title: 'Eksik bulduğunuz konu var mı?',
+          required: false,
+          placeholder: 'Eksik bulduğunuz konuları yazın...'
+        },
+        {
+          id: (Date.now() + 4).toString(),
+          type: 'radio',
+          title: 'Bu eğitimi başkalarına tavsiye eder misiniz?',
+          required: true,
+          options: ['Kesinlikle Evet', 'Evet', 'Belki', 'Hayır', 'Kesinlikle Hayır']
+        }
+      ];
+    }
+    // Genel anket (varsayılan)
+    else {
+      formTitle = 'Genel Anket';
+      formDescription = 'Görüşlerinizi almak için bu anketi doldurun.';
+      questions = [
+        {
+          id: Date.now().toString(),
+          type: 'text',
+          title: 'Adınız (isteğe bağlı)',
+          required: false,
+          placeholder: 'Adınızı yazın...'
+        },
+        {
+          id: (Date.now() + 1).toString(),
+          type: 'radio',
+          title: 'Yaş aralığınız',
+          required: true,
+          options: ['18-25', '26-35', '36-45', '46-55', '55+']
+        },
+        {
+          id: (Date.now() + 2).toString(),
+          type: 'text',
+          title: 'Görüşleriniz',
+          required: false,
+          placeholder: 'Görüşlerinizi yazın...'
+        },
+        {
+          id: (Date.now() + 3).toString(),
+          type: 'rating',
+          title: 'Genel değerlendirme',
+          required: true,
+          description: '1-5 arası puan verin'
+        }
+      ];
+    }
+
+    return {
+      title: formTitle,
+      description: formDescription,
+      questions: questions
+    };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim()) return;
     
     setIsGenerating(true);
-    // Simulate AI processing
+    
+    // AI işlemi simülasyonu
     setTimeout(() => {
       setIsGenerating(false);
+      
+      // AI ile anket oluştur
+      const generatedFormData = generateFormWithAI(prompt);
+      
+      // FormBuilder'a veri gönder
+      localStorage.setItem('aiGeneratedForm', JSON.stringify(generatedFormData));
+      
+      // FormBuilder sayfasına yönlendir
       navigate('/form-builder');
     }, 2000);
   };
@@ -62,7 +331,7 @@ const AIFormBuilder: React.FC = () => {
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center space-x-6">
               <motion.button
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/home')}
                 className="p-2 hover:bg-white/10 rounded-xl text-blue-300 hover:text-white transition-colors"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}

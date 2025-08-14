@@ -24,7 +24,7 @@ const NotFound: React.FC = () => {
           
           <div className="space-y-3">
             <Link
-              to="/"
+              to="/home"
               className="inline-flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
             >
               <Home className="w-5 h-5" />

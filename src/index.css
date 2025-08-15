@@ -11,4 +11,26 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  /* Select ve Option elementleri için global stiller */
+  select option {
+    color: #111827 !important; /* text-gray-900 */
+    background-color: #ffffff !important; /* bg-white */
+    padding: 8px 12px;
+  }
+
+  /* Dark mode için */
+  .dark select option {
+    color: #ffffff !important; /* text-white */
+    background-color: #1e293b !important; /* bg-slate-800 */
+  }
+
+  /* Select elementinin kendisi için */
+  select {
+    color: #111827 !important; /* text-gray-900 */
+  }
+
+  .dark select {
+    color: #ffffff !important; /* text-white */
+  }
 }

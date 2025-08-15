@@ -1,67 +1,74 @@
 import apiClient from './api'
 
-// Backend'den gelen veri yapısı: { id: number, il: string } formatında
+// Backend'den gelen gerçek JSON yapısı
 interface CityData {
-  id: number;
-  il: string;
+  id: string;
+  ilId: number;
+  ilAdi: string; // Backend'den gelen gerçek field
 }
 
 interface DistrictData {
-  id: number;
-  ilce: string;
+  id: string;
+  ilceId: number;
+  ilceAdi: string; // Backend'den gelen gerçek field
 }
 
 interface TownshipData {
-  id: number;
-  bucak: string;
+  id: string;
+  semtId: number;
+  semtBucakBeldeAdi: string; // Backend'den gelen gerçek field
 }
 
 interface NeighbourhoodData {
-  id: number;
-  mahalle: string;
+  id: string;
+  mahalleId: number;
+  mahalleAdi: string; // Backend'den gelen gerçek field
 }
 
 export const getCities = async (): Promise<string[]> => {
-  const { data } = await apiClient.get<CityData[]>('/Address/cities')
-  return data.map(city => city.il)
+  console.log('Calling getCities API...');
+  console.log('API URL:', '/Adres/iller');
+  const { data } = await apiClient.get<CityData[]>('/Adres/iller')
+  console.log('API Response:', data);
+  return data.map(city => city.ilAdi)
 }
 
 export const getDistricts = async (cityName: string): Promise<string[]> => {
   const safeCity = encodeURIComponent(cityName)
-  const { data } = await apiClient.get<DistrictData[]>(`/Address/districts/${safeCity}`)
-  return data.map(district => district.ilce)
+  const { data } = await apiClient.get<DistrictData[]>(`/Adres/ilceler/${safeCity}`)
+  return data.map(district => district.ilceAdi)
 }
 
-export const getDistrictTownshipTowns = async (
+export const getTownships = async (
   cityName: string,
   districtName: string
 ): Promise<string[]> => {
   const safeCity = encodeURIComponent(cityName)
   const safeDistrict = encodeURIComponent(districtName)
   const { data } = await apiClient.get<TownshipData[]>(
-    `/Address/district-township-towns/${safeCity}/${safeDistrict}`
+    `/Adres/semtler/${safeCity}/${safeDistrict}`
   )
-  return data.map(township => township.bucak)
+  return data.map(township => township.semtBucakBeldeAdi)
 }
 
 export const getNeighbourhoods = async (
   cityName: string,
   districtName: string,
-  districtTownshipTownName: string
+  townshipName: string
 ): Promise<string[]> => {
   const safeCity = encodeURIComponent(cityName)
   const safeDistrict = encodeURIComponent(districtName)
-  const safeTownship = encodeURIComponent(districtTownshipTownName)
+  const safeTownship = encodeURIComponent(townshipName)
   const { data } = await apiClient.get<NeighbourhoodData[]>(
-    `/Address/neighbourhoods/${safeCity}/${safeDistrict}/${safeTownship}`
+    `/Adres/mahalleler/${safeCity}/${safeDistrict}/${safeTownship}`
   )
-  return data.map(neighbourhood => neighbourhood.mahalle)
+  return data.map(neighbourhood => neighbourhood.mahalleAdi)
 }
 
 export default {
   getCities,
   getDistricts,
-  getDistrictTownshipTowns,
+  getTownships,
   getNeighbourhoods,
 }
 

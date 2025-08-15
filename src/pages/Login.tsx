@@ -21,7 +21,7 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useGoogleLogin } from '@react-oauth/google';
-import { getCities, getDistricts, getDistrictTownshipTowns, getNeighbourhoods } from '../services/addressService';
+import { getCities, getDistricts, getTownships, getNeighbourhoods } from '../services/addressService';
 import { getTrelloAuthUrl } from '../services/trelloService';
 import { getJiraAuthUrl } from '../services/jiraService';
 
@@ -156,7 +156,7 @@ const Login: React.FC = () => {
     if (!value || !registerData.cityName) return;
     try {
       setAddressLoading((s) => ({ ...s, townships: true }));
-      const list = await getDistrictTownshipTowns(registerData.cityName, value);
+              const list = await getTownships(registerData.cityName, value);
       setTownships(list);
     } catch (err) {
       console.error('Bucak/Nahiye listesi yüklenemedi', err);

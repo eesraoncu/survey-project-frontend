@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { getCities, getDistricts, getTownships, getNeighbourhoods } from '../services/addressService';
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -35,11 +36,110 @@ const Register: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   
+  // Address data lists
+  const [cities, setCities] = useState<string[]>([]);
+  const [districts, setDistricts] = useState<string[]>([]);
+  const [townships, setTownships] = useState<string[]>([]);
+  const [neighbourhoods, setNeighbourhoods] = useState<string[]>([]);
+  
+  // Address loading states
+  const [addressLoading, setAddressLoading] = useState({ 
+    cities: false, 
+    districts: false, 
+    townships: false, 
+    neighbourhoods: false 
+  });
+  
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { register } = useAuth();
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Load cities on component mount
+  useEffect(() => {
+    loadCities();
+  }, []);
+
+  // Load cities
+  const loadCities = async () => {
+    try {
+      console.log('Loading cities...');
+      setAddressLoading(prev => ({ ...prev, cities: true }));
+      const citiesData = await getCities();
+      console.log('Cities loaded:', citiesData);
+      setCities(citiesData);
+    } catch (error: any) {
+      console.error('Error loading cities:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+    } finally {
+      setAddressLoading(prev => ({ ...prev, cities: false }));
+    }
+  };
+
+  // Load districts when city changes
+  const loadDistricts = async (cityName: string) => {
+    if (!cityName) {
+      setDistricts([]);
+      setTownships([]);
+      setNeighbourhoods([]);
+      return;
+    }
+    
+    try {
+      setAddressLoading(prev => ({ ...prev, districts: true }));
+      const districtsData = await getDistricts(cityName);
+      setDistricts(districtsData);
+      setTownships([]);
+      setNeighbourhoods([]);
+    } catch (error) {
+      console.error('Error loading districts:', error);
+    } finally {
+      setAddressLoading(prev => ({ ...prev, districts: false }));
+    }
+  };
+
+  // Load townships when district changes
+  const loadTownships = async (cityName: string, districtName: string) => {
+    if (!cityName || !districtName) {
+      setTownships([]);
+      setNeighbourhoods([]);
+      return;
+    }
+    
+    try {
+      setAddressLoading(prev => ({ ...prev, townships: true }));
+      const townshipsData = await getTownships(cityName, districtName);
+      setTownships(townshipsData);
+      setNeighbourhoods([]);
+    } catch (error) {
+      console.error('Error loading townships:', error);
+    } finally {
+      setAddressLoading(prev => ({ ...prev, townships: false }));
+    }
+  };
+
+  // Load neighbourhoods when township changes
+  const loadNeighbourhoods = async (cityName: string, districtName: string, townshipName: string) => {
+    if (!cityName || !districtName || !townshipName) {
+      setNeighbourhoods([]);
+      return;
+    }
+    
+    try {
+      setAddressLoading(prev => ({ ...prev, neighbourhoods: true }));
+      const neighbourhoodsData = await getNeighbourhoods(cityName, districtName, townshipName);
+      setNeighbourhoods(neighbourhoodsData);
+    } catch (error) {
+      console.error('Error loading neighbourhoods:', error);
+    } finally {
+      setAddressLoading(prev => ({ ...prev, neighbourhoods: false }));
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -52,6 +152,15 @@ const Register: React.FC = () => {
         ...prev,
         [name]: ''
       }));
+    }
+
+    // Address cascading loaders
+    if (name === 'cityName') {
+      loadDistricts(value);
+    } else if (name === 'districtName') {
+      loadTownships(formData.cityName, value);
+    } else if (name === 'districtTownshipTownName') {
+      loadNeighbourhoods(formData.cityName, formData.districtName, value);
     }
   };
 
@@ -322,15 +431,19 @@ const Register: React.FC = () => {
                   </label>
                   <div className="relative">
                     <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-blue-300" />
-                    <input
-                      type="text"
+                    <select
                       id="cityName"
                       name="cityName"
                       value={formData.cityName}
                       onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-3 bg-white/80 dark:bg-white/10 border border-gray-300/50 dark:border-white/20 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-blue-300 transition-colors duration-300"
-                      placeholder="Şehir adını girin"
-                    />
+                      className="w-full pl-10 pr-4 py-3 bg-white/80 dark:bg-white/10 border border-gray-300/50 dark:border-white/20 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-white transition-colors duration-300"
+                      disabled={addressLoading.cities}
+                    >
+                      <option value="">{addressLoading.cities ? 'Yükleniyor...' : 'Şehir Seçin'}</option>
+                      {cities.map(city => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -340,15 +453,19 @@ const Register: React.FC = () => {
                   </label>
                   <div className="relative">
                     <Navigation className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-blue-300" />
-                    <input
-                      type="text"
+                    <select
                       id="districtName"
                       name="districtName"
                       value={formData.districtName}
                       onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-3 bg-white/80 dark:bg-white/10 border border-gray-300/50 dark:border-white/20 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-blue-300 transition-colors duration-300"
-                      placeholder="İlçe adını girin"
-                    />
+                      className="w-full pl-10 pr-4 py-3 bg-white/80 dark:bg-white/10 border border-gray-300/50 dark:border-white/20 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-white transition-colors duration-300"
+                      disabled={!formData.cityName || addressLoading.districts}
+                    >
+                      <option value="">{addressLoading.districts ? 'Yükleniyor...' : 'İlçe Seçin'}</option>
+                      {districts.map(district => (
+                        <option key={district} value={district}>{district}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -358,15 +475,19 @@ const Register: React.FC = () => {
                   </label>
                   <div className="relative">
                     <Home className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-blue-300" />
-                    <input
-                      type="text"
+                    <select
                       id="districtTownshipTownName"
                       name="districtTownshipTownName"
                       value={formData.districtTownshipTownName}
                       onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-3 bg-white/80 dark:bg-white/10 border border-gray-300/50 dark:border-white/20 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-blue-300 transition-colors duration-300"
-                      placeholder="Mahalle/Köy adını girin"
-                    />
+                      className="w-full pl-10 pr-4 py-3 bg-white/80 dark:bg-white/10 border border-gray-300/50 dark:border-white/20 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-white transition-colors duration-300"
+                      disabled={!formData.districtName || addressLoading.townships}
+                    >
+                      <option value="">{addressLoading.townships ? 'Yükleniyor...' : 'Mahalle/Köy Seçin'}</option>
+                      {townships.map(township => (
+                        <option key={township} value={township}>{township}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -376,15 +497,19 @@ const Register: React.FC = () => {
                   </label>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-blue-300" />
-                    <input
-                      type="text"
+                    <select
                       id="neighbourhoodName"
                       name="neighbourhoodName"
                       value={formData.neighbourhoodName}
                       onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-3 bg-white/80 dark:bg-white/10 border border-gray-300/50 dark:border-white/20 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-blue-300 transition-colors duration-300"
-                      placeholder="Semt adını girin"
-                    />
+                      className="w-full pl-10 pr-4 py-3 bg-white/80 dark:bg-white/10 border border-gray-300/50 dark:border-white/20 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-white transition-colors duration-300"
+                      disabled={!formData.districtTownshipTownName || addressLoading.neighbourhoods}
+                    >
+                      <option value="">{addressLoading.neighbourhoods ? 'Yükleniyor...' : 'Semt Seçin'}</option>
+                      {neighbourhoods.map(neighbourhood => (
+                        <option key={neighbourhood} value={neighbourhood}>{neighbourhood}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 

@@ -32,6 +32,7 @@ import {
   Grid3X3,
   ChevronDown
 } from 'lucide-react';
+import { testJiraConnection } from '../services/jiraService';
 
 interface Survey {
   id: string;
@@ -49,6 +50,7 @@ const Home: React.FC = () => {
   const [hoveredSurvey, setHoveredSurvey] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'templates' | 'ai' | 'trending'>('templates');
   const [particles, setParticles] = useState<Array<{id: number, x: number, y: number, vx: number, vy: number}>>([]);
+  const [jiraTestResult, setJiraTestResult] = useState<string>('');
   const navigate = useNavigate();
 
   // AI-powered survey suggestions
@@ -123,6 +125,23 @@ const Home: React.FC = () => {
     }
   };
 
+  // Jira code test function
+  const handleJiraTest = async () => {
+    try {
+      setJiraTestResult('Test ediliyor...');
+      // Gerçek Jira token'ını kullan
+      const token = import.meta.env.VITE_JIRA_TOKEN;
+      if (!token) {
+        setJiraTestResult('Hata: Jira token bulunamadı!');
+        return;
+      }
+      const result = await testJiraConnection(token);
+      setJiraTestResult(`Başarılı! ${result.message}`);
+    } catch (error) {
+      setJiraTestResult(`Hata: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 relative overflow-hidden">
       {/* Animated Background Particles */}
@@ -140,63 +159,7 @@ const Home: React.FC = () => {
         ))}
       </div>
 
-      {/* Header */}
-      <header className="relative bg-white/10 backdrop-blur-xl shadow-2xl border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <div className="flex items-center space-x-6">
-              <motion.div 
-                className="flex items-center space-x-3"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-2xl">
-                  <FileText className="w-7 h-7 text-white" />
-                </div>
-                <span className="text-2xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
-                  Formlar
-                </span>
-              </motion.div>
-            </div>
-            
-            <div className="flex-1 max-w-2xl mx-8">
-              <motion.div 
-                className="relative"
-                whileFocus={{ scale: 1.02 }}
-              >
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-blue-300 w-6 h-6" />
-                <input
-                  type="text"
-                  placeholder="AI destekli arama..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 bg-white/10 border border-white/20 rounded-2xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-white placeholder-blue-200 backdrop-blur-xl"
-                />
-                <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                  <Sparkles className="w-5 h-5 text-blue-300" />
-                </div>
-              </motion.div>
-            </div>
 
-            <div className="flex items-center space-x-4">
-              <motion.button 
-                className="p-3 rounded-2xl hover:bg-white/10 transition-colors"
-                whileHover={{ scale: 1.1, rotate: 5 }}
-                whileTap={{ scale: 0.9 }}
-              >
-                <Grid3X3 className="w-6 h-6 text-white" />
-              </motion.button>
-              <motion.div 
-                className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center shadow-2xl"
-                whileHover={{ scale: 1.1, rotate: 5 }}
-                whileTap={{ scale: 0.9 }}
-              >
-                <span className="text-white font-bold text-lg">E</span>
-              </motion.div>
-            </div>
-          </div>
-        </div>
-      </header>
 
       <main className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <motion.div
@@ -273,15 +236,25 @@ const Home: React.FC = () => {
                     <h2 className="text-3xl font-bold text-white">
                       Yeni bir form hazırlamaya başlayın
                     </h2>
-                    <motion.button
-                      className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-2xl font-medium shadow-2xl"
-                      whileHover={{ scale: 1.05, y: -2 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => navigate('/ai-form-builder')}
-                    >
-                      <Rocket className="w-5 h-5 inline mr-2" />
-                      AI Destekli Oluştur
-                    </motion.button>
+                    <div className="flex items-center space-x-4">
+                      <motion.button
+                        className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-2xl font-medium shadow-2xl"
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => navigate('/ai-form-builder')}
+                      >
+                        <Rocket className="w-5 h-5 inline mr-2" />
+                        AI Destekli Oluştur
+                      </motion.button>
+                      <motion.button
+                        className="px-6 py-3 bg-gradient-to-r from-blue-500 to-sky-600 text-white rounded-2xl font-medium shadow-2xl"
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleJiraTest}
+                      >
+                        Jira Token Test
+                      </motion.button>
+                    </div>
                   </div>
                   
                   <div className="grid grid-cols-1 lg:grid-cols-6 gap-8">
@@ -365,6 +338,14 @@ const Home: React.FC = () => {
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Jira Test Result */}
+                  {jiraTestResult && (
+                    <div className="mt-6 p-4 bg-white/10 backdrop-blur-xl rounded-xl border border-white/20">
+                      <h4 className="text-lg font-semibold text-white mb-2">Jira Test Sonucu:</h4>
+                      <p className="text-blue-200">{jiraTestResult}</p>
+                    </div>
+                  )}
                 </section>
               </motion.div>
             )}

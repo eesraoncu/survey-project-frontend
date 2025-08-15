@@ -7,27 +7,74 @@ import FormBuilder from './pages/FormBuilder'
 import AIFormBuilder from './pages/AIFormBuilder'
 import FormResponse from './pages/FormResponse'
 import Login from './pages/Login'
+import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
+import TrelloCallback from './pages/TrelloCallback'
+import JiraCallback from './pages/JiraCallback'
 import NotFound from './pages/NotFound'
+import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
   return (
     <Routes>
-      {/* Login sayfası layout dışında, ilk açılış rotası */}
+      {/* Public routes - giriş yapmadan erişilebilir */}
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/auth/trello/callback" element={<TrelloCallback />} />
+      <Route path="/auth/jira/callback" element={<JiraCallback />} />
 
       {/* Tüm uygulama layout'u */}
       <Route element={<Layout />}>
-        {/* Ana route'u login'e yönlendir */}
         <Route path="/" element={<Navigate to="/login" replace />} />
-        {/* Eski ana sayfayı /home altına taşıdık */}
-        <Route path="/home" element={<Home />} />
-        <Route path="/forms" element={<Forms />} />
-        <Route path="/form-builder" element={<FormBuilder />} />
-        <Route path="/ai-form-builder" element={<AIFormBuilder />} />
-        <Route path="/forms/new" element={<FormBuilder />} />
-        <Route path="/forms/:id" element={<FormResponse />} />
+        <Route
+          path="/home"
+          element={
+            <ProtectedRoute>
+              <Home />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/forms"
+          element={
+            <ProtectedRoute>
+              <Forms />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/form-builder"
+          element={
+            <ProtectedRoute>
+              <FormBuilder />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ai-form-builder"
+          element={
+            <ProtectedRoute>
+              <AIFormBuilder />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/forms/new"
+          element={
+            <ProtectedRoute>
+              <FormBuilder />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/forms/:id"
+          element={
+            <ProtectedRoute>
+              <FormResponse />
+            </ProtectedRoute>
+          }
+        />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

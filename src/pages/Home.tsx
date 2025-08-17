@@ -33,17 +33,9 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { testJiraConnection } from '../services/jiraService';
+import { surveyService, type Survey } from '../services/surveyService';
 
-interface Survey {
-  id: string;
-  title: string;
-  responses: number;
-  createdAt: string;
-  backgroundImage?: string;
-  type: 'contact' | 'event' | 'party' | 'tshirt' | 'registration' | 'custom';
-  aiScore?: number;
-  trendScore?: number;
-}
+
 
 const Home: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,10 +67,20 @@ const Home: React.FC = () => {
     { id: 'registration', title: 'Etkinlik Kayıt Formu', icon: <Building className="w-6 h-6" />, color: 'from-indigo-400 to-purple-500', difficulty: 'Orta', time: '4 dk' }
   ];
 
-  const recentSurveys: Survey[] = [
-    { id: '1', title: 'Fikir 1', responses: 24, createdAt: '18 Mar 2025', type: 'custom', aiScore: 89, trendScore: 92 },
-    { id: '2', title: 'Fikir 2', responses: 18, createdAt: '15 Mar 2025', type: 'custom', aiScore: 76, trendScore: 85 }
-  ];
+  const [recentSurveys, setRecentSurveys] = useState<Survey[]>([]);
+
+  // Son anketleri yükle
+  useEffect(() => {
+    const loadRecentSurveys = async () => {
+      try {
+        const surveys = await surveyService.getAllSurveys();
+        setRecentSurveys(surveys.slice(0, 2)); // İlk 2 anketi al
+      } catch (error) {
+        console.error('Error loading recent surveys:', error);
+      }
+    };
+    loadRecentSurveys();
+  }, []);
 
   // Particle system for background
   useEffect(() => {
@@ -472,7 +474,7 @@ const Home: React.FC = () => {
                     z: 50
                   }}
                   transition={{ type: "spring", stiffness: 300 }}
-                  onMouseEnter={() => setHoveredSurvey(survey.id)}
+                  onMouseEnter={() => setHoveredSurvey(survey.id.toString())}
                   onMouseLeave={() => setHoveredSurvey(null)}
                   onClick={() => navigate('/form-builder')}
                 >
@@ -499,7 +501,7 @@ const Home: React.FC = () => {
                           </div>
                           <div>
                             <h3 className="font-semibold text-white text-lg group-hover:text-purple-200 transition-colors">
-                              {survey.title}
+                              {survey.surveyName}
                             </h3>
                             <div className="flex items-center space-x-2 text-sm text-purple-300">
                               <Users className="w-4 h-4" />

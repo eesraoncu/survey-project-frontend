@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
   Save, 
@@ -22,8 +23,11 @@ import {
   User,
   ChevronDown,
   ChevronUp,
-  GripVertical
+  GripVertical,
+  AlertCircle,
+  CheckCircle
 } from 'lucide-react';
+import { surveyService, type FormData as SurveyFormData } from '../services/surveyService';
 
 interface Question {
   id: string;
@@ -46,9 +50,13 @@ interface FormData {
     allowMultipleResponses: boolean;
     theme: 'light' | 'dark' | 'custom';
   };
+  status: 'active' | 'draft' | 'archived';
+  category: string;
+  tags: string[];
 }
 
 const FormBuilder: React.FC = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<FormData>({
     title: '',
     description: '',
@@ -59,12 +67,17 @@ const FormBuilder: React.FC = () => {
       showProgressBar: true,
       allowMultipleResponses: false,
       theme: 'light'
-    }
+    },
+    status: 'draft',
+    category: 'Genel',
+    tags: []
   });
 
   const [activeTab, setActiveTab] = useState<'builder' | 'preview' | 'settings'>('builder');
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [draggedQuestion, setDraggedQuestion] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   const questionTypes = [
     { type: 'text' as const, label: 'Kısa Metin', icon: <Type className="w-5 h-5" />, color: 'bg-blue-500' },
@@ -96,6 +109,57 @@ const FormBuilder: React.FC = () => {
     }));
   };
 
+  const handleSaveForm = async () => {
+    try {
+      setIsSaving(true);
+      setSaveMessage(null);
+
+      // Form validasyonu
+      if (!formData.title.trim()) {
+        setSaveMessage({ type: 'error', message: 'Form başlığı gereklidir' });
+        return;
+      }
+
+      if (formData.questions.length === 0) {
+        setSaveMessage({ type: 'error', message: 'En az bir soru eklemelisiniz' });
+        return;
+      }
+
+      // Backend'e gönderilecek veriyi hazırla
+      const surveyData: SurveyFormData = {
+        surveyName: formData.title,
+        surveyDescription: formData.description,
+        surveyTypeId: 1, // Varsayılan tip ID
+        isActive: formData.status === 'active',
+        backgroundImage: formData.backgroundImage,
+        questions: formData.questions,
+        settings: formData.settings,
+        status: formData.status,
+        category: formData.category,
+        tags: formData.tags
+      };
+
+      // Backend'e kaydet
+      const savedSurvey = await surveyService.createSurvey(surveyData);
+      
+      setSaveMessage({ type: 'success', message: 'Anket başarıyla kaydedildi!' });
+      
+      // 2 saniye sonra anketler sayfasına yönlendir
+      setTimeout(() => {
+        navigate('/forms');
+      }, 2000);
+
+    } catch (error: any) {
+      console.error('Error saving survey:', error);
+      setSaveMessage({ 
+        type: 'error', 
+        message: error.message || 'Anket kaydedilirken bir hata oluştu' 
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const updateQuestion = (id: string, updates: Partial<Question>) => {
     setFormData(prev => ({
       ...prev,
@@ -106,16 +170,22 @@ const FormBuilder: React.FC = () => {
   };
 
   const deleteQuestion = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      questions: prev.questions.filter(q => q.id !== id)
-    }));
+    if (window.confirm('Bu soruyu silmek istediğinizden emin misiniz?')) {
+      setFormData(prev => ({
+        ...prev,
+        questions: prev.questions.filter(q => q.id !== id)
+      }));
+    }
   };
 
   const duplicateQuestion = (id: string) => {
     const question = formData.questions.find(q => q.id === id);
     if (question) {
-      const newQuestion = { ...question, id: Date.now().toString() };
+      const newQuestion = { 
+        ...question, 
+        id: Date.now().toString(),
+        title: `${question.title} (Kopya)`
+      };
       setFormData(prev => ({
         ...prev,
         questions: [...prev.questions, newQuestion]
@@ -156,18 +226,24 @@ const FormBuilder: React.FC = () => {
           </div>
           
           <div className="flex items-center space-x-2">
-            <button
+            <motion.button
               onClick={() => duplicateQuestion(question.id)}
-              className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 hover:text-gray-800"
+              className="p-2 hover:bg-blue-100 rounded-lg text-blue-600 hover:text-blue-800 transition-colors"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              title="Soru kopyala"
             >
               <Copy className="w-4 h-4" />
-            </button>
-            <button
+            </motion.button>
+            <motion.button
               onClick={() => deleteQuestion(question.id)}
-              className="p-2 hover:bg-red-100 rounded-lg text-red-600 hover:text-red-800"
+              className="p-2 hover:bg-red-100 rounded-lg text-red-600 hover:text-red-800 transition-colors"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              title="Soru sil"
             >
               <Trash2 className="w-4 h-4" />
-            </button>
+            </motion.button>
           </div>
         </div>
 
@@ -177,7 +253,10 @@ const FormBuilder: React.FC = () => {
             value={question.title}
             onChange={(e) => updateQuestion(question.id, { title: e.target.value })}
             placeholder="Soru başlığı..."
-            className="w-full text-lg font-medium border-none focus:ring-0 p-0 text-gray-900"
+            className="w-full text-lg font-medium border-none focus:ring-0 p-0 text-gray-900 question-input"
+            style={{
+              '--tw-placeholder-opacity': '0.25'
+            } as React.CSSProperties}
           />
           
           {question.description !== undefined && (
@@ -186,7 +265,10 @@ const FormBuilder: React.FC = () => {
               value={question.description}
               onChange={(e) => updateQuestion(question.id, { description: e.target.value })}
               placeholder="Soru açıklaması (opsiyonel)..."
-              className="w-full text-sm border-none focus:ring-0 p-0 text-gray-600"
+              className="w-full text-sm border-none focus:ring-0 p-0 text-gray-600 question-input"
+              style={{
+                '--tw-placeholder-opacity': '0.25'
+              } as React.CSSProperties}
             />
           )}
 
@@ -196,7 +278,10 @@ const FormBuilder: React.FC = () => {
               value={question.placeholder}
               onChange={(e) => updateQuestion(question.id, { placeholder: e.target.value })}
               placeholder="Placeholder metni..."
-              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent question-input"
+              style={{
+                '--tw-placeholder-opacity': '0.25'
+              } as React.CSSProperties}
             />
           )}
 
@@ -212,7 +297,11 @@ const FormBuilder: React.FC = () => {
                       newOptions[index] = e.target.value;
                       updateQuestion(question.id, { options: newOptions });
                     }}
-                    className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder={`Seçenek ${index + 1}`}
+                    className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent question-input"
+                    style={{
+                      '--tw-placeholder-opacity': '0.25'
+                    } as React.CSSProperties}
                   />
                   <button
                     onClick={() => {
@@ -273,6 +362,31 @@ const FormBuilder: React.FC = () => {
       {/* Header */}
       <header className="relative bg-white/10 backdrop-blur-xl shadow-2xl border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Save Message */}
+          {saveMessage && (
+            <motion.div 
+              className={`py-3 px-4 rounded-lg mb-4 flex items-center space-x-2 ${
+                saveMessage.type === 'success' 
+                  ? 'bg-green-500/20 border border-green-500/30' 
+                  : 'bg-red-500/20 border border-red-500/30'
+              }`}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              {saveMessage.type === 'success' ? (
+                <CheckCircle className="w-5 h-5 text-green-400" />
+              ) : (
+                <AlertCircle className="w-5 h-5 text-red-400" />
+              )}
+              <span className={`text-sm ${
+                saveMessage.type === 'success' ? 'text-green-300' : 'text-red-300'
+              }`}>
+                {saveMessage.message}
+              </span>
+            </motion.div>
+          )}
+          
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center space-x-6">
               <motion.div 
@@ -311,13 +425,22 @@ const FormBuilder: React.FC = () => {
               </motion.button>
               
               <motion.button
-                onClick={() => console.log('Saving form...')}
-                className="px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-medium shadow-xl flex items-center space-x-2"
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.95 }}
+                onClick={handleSaveForm}
+                disabled={isSaving}
+                className="px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-medium shadow-xl flex items-center space-x-2 disabled:opacity-50"
+                whileHover={{ scale: isSaving ? 1 : 1.05, y: isSaving ? 0 : -2 }}
+                whileTap={{ scale: isSaving ? 1 : 0.95 }}
               >
-                <Save className="w-4 h-4" />
-                <span>Kaydet</span>
+                {isSaving ? (
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                  />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                <span>{isSaving ? 'Kaydediliyor...' : 'Kaydet'}</span>
               </motion.button>
             </div>
           </div>
@@ -360,12 +483,16 @@ const FormBuilder: React.FC = () => {
 
           {/* Main Content Area */}
           <div className="lg:col-span-3">
-            <motion.div 
-              className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
+            <AnimatePresence mode="wait">
+              {activeTab === 'builder' && (
+                <motion.div 
+                  key="builder"
+                  className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                >
               {/* Form Header */}
               <div className="mb-8">
                 <div className="space-y-4">
@@ -517,7 +644,225 @@ const FormBuilder: React.FC = () => {
                   </div>
                 )}
               </div>
-            </motion.div>
+                </motion.div>
+              )}
+
+              {activeTab === 'preview' && (
+                <motion.div 
+                  key="preview"
+                  className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                >
+                  <h2 className="text-2xl font-bold text-white mb-6">Form Önizleme</h2>
+                  <div className="bg-white/5 rounded-2xl p-6">
+                    <h3 className="text-xl font-semibold text-white mb-4">{formData.title || 'Form Başlığı'}</h3>
+                    <p className="text-blue-200 mb-6">{formData.description || 'Form açıklaması'}</p>
+                    
+                    {formData.questions.length === 0 ? (
+                      <p className="text-blue-300 text-center py-8">Henüz soru eklenmemiş</p>
+                    ) : (
+                      <div className="space-y-6">
+                        {formData.questions.map((question, index) => (
+                          <div key={question.id} className="bg-white/10 rounded-xl p-4">
+                            <h4 className="text-white font-medium mb-3">
+                              {question.title} {question.required && <span className="text-red-400">*</span>}
+                            </h4>
+                            
+                            {question.type === 'text' && (
+                              <input
+                                type="text"
+                                placeholder={question.placeholder || 'Yanıtınızı yazın...'}
+                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-blue-200"
+                                disabled
+                              />
+                            )}
+                            
+                            {question.type === 'textarea' && (
+                              <textarea
+                                placeholder={question.placeholder || 'Yanıtınızı yazın...'}
+                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-blue-200"
+                                rows={3}
+                                disabled
+                              />
+                            )}
+                            
+                            {(question.type === 'radio' || question.type === 'checkbox') && (
+                              <div className="space-y-2">
+                                {question.options?.map((option, optionIndex) => (
+                                  <label key={optionIndex} className="flex items-center space-x-2">
+                                    <input
+                                      type={question.type}
+                                      disabled
+                                      className="text-blue-500 bg-white/10 border-white/20"
+                                    />
+                                    <span className="text-blue-200">{option}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {question.type === 'select' && (
+                              <select className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white" disabled>
+                                <option>Seçenek seçin...</option>
+                                {question.options?.map((option, optionIndex) => (
+                                  <option key={optionIndex} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+
+              {activeTab === 'settings' && (
+                <motion.div 
+                  key="settings"
+                  className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                >
+                  <h2 className="text-2xl font-bold text-white mb-6">Form Ayarları</h2>
+                  
+                  <div className="space-y-6">
+                    {/* Kategori */}
+                    <div>
+                      <label className="block text-sm font-medium text-blue-200 mb-2">Kategori</label>
+                      <select
+                        value={formData.category}
+                        onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+                      >
+                        <option value="Genel">Genel</option>
+                        <option value="Ürün">Ürün</option>
+                        <option value="Müşteri">Müşteri</option>
+                        <option value="İnsan Kaynakları">İnsan Kaynakları</option>
+                        <option value="Eğitim">Eğitim</option>
+                        <option value="Pazarlama">Pazarlama</option>
+                        <option value="Teknoloji">Teknoloji</option>
+                      </select>
+                    </div>
+
+                    {/* Durum */}
+                    <div>
+                      <label className="block text-sm font-medium text-blue-200 mb-2">Durum</label>
+                      <select
+                        value={formData.status}
+                        onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as 'active' | 'draft' | 'archived' }))}
+                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+                      >
+                        <option value="draft">Taslak</option>
+                        <option value="active">Aktif</option>
+                        <option value="archived">Arşivlenmiş</option>
+                      </select>
+                    </div>
+
+                    {/* Etiketler */}
+                    <div>
+                      <label className="block text-sm font-medium text-blue-200 mb-2">Etiketler</label>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {formData.tags.map((tag, index) => (
+                          <span key={index} className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm flex items-center space-x-2">
+                            <span>{tag}</span>
+                            <button
+                              onClick={() => setFormData(prev => ({ 
+                                ...prev, 
+                                tags: prev.tags.filter((_, i) => i !== index) 
+                              }))}
+                              className="text-blue-400 hover:text-blue-200"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex space-x-2">
+                        <input
+                          type="text"
+                          placeholder="Yeni etiket ekle..."
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                              setFormData(prev => ({ 
+                                ...prev, 
+                                tags: [...prev.tags, e.currentTarget.value.trim()] 
+                              }));
+                              e.currentTarget.value = '';
+                            }
+                          }}
+                          className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-blue-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+                        />
+                        <button
+                          onClick={(e) => {
+                            const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                            if (input.value.trim()) {
+                              setFormData(prev => ({ 
+                                ...prev, 
+                                tags: [...prev.tags, input.value.trim()] 
+                              }));
+                              input.value = '';
+                            }
+                          }}
+                          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                        >
+                          Ekle
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Form Ayarları */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-white">Form Ayarları</h3>
+                      
+                      <label className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          checked={formData.settings.allowAnonymous}
+                          onChange={(e) => setFormData(prev => ({ 
+                            ...prev, 
+                            settings: { ...prev.settings, allowAnonymous: e.target.checked } 
+                          }))}
+                          className="w-4 h-4 text-blue-500 bg-white/10 border-white/20 rounded focus:ring-blue-400"
+                        />
+                        <span className="text-blue-200">Anonim yanıtlara izin ver</span>
+                      </label>
+                      
+                      <label className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          checked={formData.settings.showProgressBar}
+                          onChange={(e) => setFormData(prev => ({ 
+                            ...prev, 
+                            settings: { ...prev.settings, showProgressBar: e.target.checked } 
+                          }))}
+                          className="w-4 h-4 text-blue-500 bg-white/10 border-white/20 rounded focus:ring-blue-400"
+                        />
+                        <span className="text-blue-200">İlerleme çubuğunu göster</span>
+                      </label>
+                      
+                      <label className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          checked={formData.settings.allowMultipleResponses}
+                          onChange={(e) => setFormData(prev => ({ 
+                            ...prev, 
+                            settings: { ...prev.settings, allowMultipleResponses: e.target.checked } 
+                          }))}
+                          className="w-4 h-4 text-blue-500 bg-white/10 border-white/20 rounded focus:ring-blue-400"
+                        />
+                        <span className="text-blue-200">Çoklu yanıtlara izin ver</span>
+                      </label>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </main>

@@ -16,7 +16,9 @@ import {
   MapPin,
   Building,
   Home,
-  Navigation
+  Navigation,
+  Check,
+  X
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -47,6 +49,17 @@ const Login: React.FC = () => {
   });
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [registerErrors, setRegisterErrors] = useState<{[key: string]: string}>({});
+  
+  // Password validation states for register form
+  const [passwordCriteria, setPasswordCriteria] = useState({
+    minLength: false,
+    hasNumber: false,
+    hasSpecialChar: false
+  });
+  
+  // Password confirmation state for register form
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   // Address data lists
   const [cities, setCities] = useState<string[]>([]);
   const [districts, setDistricts] = useState<string[]>([]);
@@ -57,6 +70,17 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { login, register, loginWithGoogle } = useAuth();
+
+  // Password validation function
+  const validatePassword = (password: string) => {
+    const criteria = {
+      minLength: password.length >= 8,
+      hasNumber: /\d/.test(password),
+      hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
+    };
+    setPasswordCriteria(criteria);
+    return criteria.minLength && criteria.hasNumber && criteria.hasSpecialChar;
+  };
 
   // Google Login Hook
   const googleLogin = useGoogleLogin({
@@ -198,6 +222,11 @@ const Login: React.FC = () => {
         [name]: ''
       }));
     }
+
+    // Password validation
+    if (name === 'userPassword') {
+      validatePassword(value);
+    }
   };
 
   const validateRegisterForm = () => {
@@ -219,8 +248,14 @@ const Login: React.FC = () => {
 
     if (!registerData.userPassword) {
       newErrors.userPassword = 'Şifre alanı zorunludur';
-    } else if (registerData.userPassword.length < 6) {
-      newErrors.userPassword = 'Şifre en az 6 karakter olmalıdır';
+    } else if (!validatePassword(registerData.userPassword)) {
+      newErrors.userPassword = 'Şifreniz en az 8 karakter, bir sayı ve özel karakter içermelidir.';
+    }
+
+    if (!passwordConfirm) {
+      newErrors.passwordConfirm = 'Şifre tekrarı alanı zorunludur';
+    } else if (registerData.userPassword !== passwordConfirm) {
+      newErrors.passwordConfirm = 'Şifreler eşleşmiyor';
     }
 
     if (!registerData.userAge) {
@@ -253,28 +288,45 @@ const Login: React.FC = () => {
 
       const success = await register(registerPayload);
 
-      if (success) {
-        alert('Kayıt başarılı! Giriş yapabilirsiniz.');
-        setActiveTab('login');
-        setRegisterData({
-          userName: '',
-          userSurname: '',
-          userEmail: '',
-          userPassword: '',
-          userAge: '',
-          cityName: '',
-          districtName: '',
-          districtTownshipTownName: '',
-          neighbourhoodName: '',
-          addressDetails: ''
-        });
-      } else {
-        alert('Kayıt başarısız! Lütfen tekrar deneyin.');
-      }
-    } catch (error: any) {
-      console.error('Register error:', error);
-      alert(error.message || 'Kayıt olurken bir hata oluştu');
-    } finally {
+             if (success) {
+         alert('Kayıt başarılı! Giriş yapabilirsiniz.');
+         setActiveTab('login');
+         // Form temizleme
+         setRegisterData({
+           userName: '',
+           userSurname: '',
+           userEmail: '',
+           userPassword: '',
+           userAge: '',
+           cityName: '',
+           districtName: '',
+           districtTownshipTownName: '',
+           neighbourhoodName: '',
+           addressDetails: ''
+         });
+         setPasswordConfirm('');
+         setPasswordCriteria({
+           minLength: false,
+           hasNumber: false,
+           hasSpecialChar: false
+         });
+         setRegisterErrors({});
+       } else {
+         alert('Kayıt başarısız! Lütfen tekrar deneyin.');
+       }
+         } catch (error: any) {
+       console.error('Register error:', error);
+       
+       // E-posta zaten kullanılıyor hatası için özel mesaj
+       if (error.message && error.message.includes('email adresi zaten kullanılıyor')) {
+         setRegisterErrors(prev => ({
+           ...prev,
+           userEmail: 'Bu e-posta adresi zaten kullanılıyor. Lütfen farklı bir e-posta adresi deneyin.'
+         }));
+       } else {
+         alert(error.message || 'Kayıt olurken bir hata oluştu');
+       }
+     } finally {
       setIsLoading(false);
     }
   };
@@ -630,6 +682,79 @@ const Login: React.FC = () => {
                     {registerErrors.userPassword && (
                       <p className="text-red-500 text-sm mt-1">{registerErrors.userPassword}</p>
                     )}
+
+                                         {/* Password Confirmation */}
+                     <div className="md:col-span-2">
+                       <label htmlFor="passwordConfirm" className="block text-sm font-medium text-gray-700 dark:text-blue-200 mb-1">
+                         Şifre Tekrarı *
+                       </label>
+                       <div className="relative">
+                         <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-blue-300" />
+                         <input
+                           type={showPasswordConfirm ? 'text' : 'password'}
+                           id="passwordConfirm"
+                           value={passwordConfirm}
+                           onChange={(e) => setPasswordConfirm(e.target.value)}
+                           className={`w-full pl-10 pr-12 py-3 bg-white/80 dark:bg-white/10 border rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-blue-300 transition-colors duration-300 ${
+                             registerErrors.passwordConfirm ? 'border-red-500' : 'border-gray-300/50 dark:border-white/20'
+                           }`}
+                           placeholder="Şifrenizi tekrar girin"
+                         />
+                         <button
+                           type="button"
+                           onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
+                           className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-blue-300 hover:text-gray-600 dark:hover:text-white transition-colors"
+                         >
+                           {showPasswordConfirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                         </button>
+                       </div>
+                                               {passwordConfirm && (
+                          registerData.userPassword === passwordConfirm ? (
+                            <p className="text-green-500 text-sm mt-1 flex items-center space-x-1">
+                              <Check className="w-4 h-4" />
+                              <span>Şifreler eşleşiyor</span>
+                            </p>
+                          ) : (
+                            <p className="text-red-500 text-sm mt-1">Şifreler eşleşmiyor</p>
+                          )
+                        )}
+                     </div>
+
+                     {/* Password Criteria */}
+                     <div className="md:col-span-2">
+                       <div className="space-y-2 mt-2">
+                         <div className="flex items-center space-x-2 text-sm">
+                           {passwordCriteria.minLength ? (
+                             <Check className="w-4 h-4 text-green-500" />
+                           ) : (
+                             <X className="w-4 h-4 text-gray-400" />
+                           )}
+                           <span className={passwordCriteria.minLength ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
+                             En az 8 karakter
+                           </span>
+                         </div>
+                         <div className="flex items-center space-x-2 text-sm">
+                           {passwordCriteria.hasNumber ? (
+                             <Check className="w-4 h-4 text-green-500" />
+                           ) : (
+                             <X className="w-4 h-4 text-gray-400" />
+                           )}
+                           <span className={passwordCriteria.hasNumber ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
+                             En az 1 rakam
+                           </span>
+                         </div>
+                         <div className="flex items-center space-x-2 text-sm">
+                           {passwordCriteria.hasSpecialChar ? (
+                             <Check className="w-4 h-4 text-green-500" />
+                           ) : (
+                             <X className="w-4 h-4 text-gray-400" />
+                           )}
+                           <span className={passwordCriteria.hasSpecialChar ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
+                             En az 1 özel karakter
+                           </span>
+                         </div>
+                       </div>
+                     </div>
                   </div>
                 </div>
               </div>

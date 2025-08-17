@@ -31,26 +31,12 @@ import {
   Brain,
   ChartBar,
   Clock,
-
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
+import { surveyService, type Survey } from '../services/surveyService';
 
-interface Survey {
-  id: string;
-  title: string;
-  description: string;
-  responses: number;
-  createdAt: string;
-  lastModified: string;
-  status: 'active' | 'draft' | 'archived';
-  backgroundImage?: string;
-  questions: number;
-  views: number;
-  completionRate: number;
-  aiScore?: number;
-  trendScore?: number;
-  category: string;
-  tags: string[];
-}
+
 
 const Forms: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -61,80 +47,43 @@ const Forms: React.FC = () => {
   const [showImageUpload, setShowImageUpload] = useState<string | null>(null);
   const [showAIModal, setShowAIModal] = useState(false);
   const [sortBy, setSortBy] = useState<'date' | 'responses' | 'views' | 'ai'>('date');
+  
+  // Backend'den gelen veriler için state'ler
+  const [surveys, setSurveys] = useState<Survey[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const surveys: Survey[] = [
-    {
-      id: '1',
-      title: 'Fikir 1',
-      description: 'Yeni ürün fikirleri için anket',
-      responses: 24,
-      createdAt: '18 Mar 2025',
-      lastModified: '20 Mar 2025',
-      status: 'active',
-      questions: 15,
-      views: 156,
-      completionRate: 85,
-      aiScore: 89,
-      trendScore: 92,
-      category: 'Ürün',
-      tags: ['inovasyon', 'pazar araştırması', 'müşteri geri bildirimi']
-    },
-    {
-      id: '2',
-      title: 'Fikir 2',
-      description: 'Müşteri memnuniyet anketi',
-      responses: 18,
-      createdAt: '15 Mar 2025',
-      lastModified: '18 Mar 2025',
-      status: 'active',
-      questions: 12,
-      views: 89,
-      completionRate: 78,
-      aiScore: 76,
-      trendScore: 85,
-      category: 'Müşteri',
-      tags: ['müşteri deneyimi', 'hizmet kalitesi', 'geri bildirim']
-    },
-    {
-      id: '3',
-      title: 'Çalışan Anketi',
-      description: 'İş ortamı değerlendirmesi',
-      responses: 45,
-      createdAt: '10 Mar 2025',
-      lastModified: '12 Mar 2025',
-      status: 'active',
-      questions: 20,
-      views: 234,
-      completionRate: 92,
-      aiScore: 94,
-      trendScore: 88,
-      category: 'İnsan Kaynakları',
-      tags: ['çalışan memnuniyeti', 'iş ortamı', 'gelişim']
-    },
-    {
-      id: '4',
-      title: 'Eğitim Değerlendirmesi',
-      description: 'Kurs sonrası geri bildirim',
-      responses: 32,
-      createdAt: '5 Mar 2025',
-      lastModified: '8 Mar 2025',
-      status: 'draft',
-      questions: 18,
-      views: 0,
-      completionRate: 0,
-      aiScore: 82,
-      trendScore: 79,
-      category: 'Eğitim',
-      tags: ['eğitim', 'kurs', 'öğrenme']
+  // Backend'den anketleri yükle
+  useEffect(() => {
+    loadSurveys();
+  }, []);
+
+  const loadSurveys = async () => {
+    try {
+      console.log('🔄 Anketler yükleniyor...');
+      setIsLoading(true);
+      setError(null);
+      const surveysData = await surveyService.getAllSurveys();
+      console.log('📊 Yüklenen anketler:', surveysData);
+      setSurveys(surveysData);
+    } catch (err: any) {
+      console.error('❌ Anketler yüklenirken hata:', err);
+      setError(err.message || 'Anketler yüklenirken bir hata oluştu');
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  };
+
+  const handleRefresh = () => {
+    loadSurveys();
+  };
 
   const categories = ['Tümü', 'Ürün', 'Müşteri', 'İnsan Kaynakları', 'Eğitim', 'Pazarlama', 'Teknoloji'];
 
   const filteredSurveys = surveys.filter(survey => {
-    const matchesSearch = survey.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         survey.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         survey.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesSearch = survey.surveyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         survey.surveyDescription.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (survey.tags && survey.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())));
     const matchesStatus = selectedStatus === 'all' || survey.status === selectedStatus;
     const matchesCategory = selectedCategory === 'all' || survey.category === selectedCategory;
     return matchesSearch && matchesStatus && matchesCategory;
@@ -142,10 +91,10 @@ const Forms: React.FC = () => {
 
   const sortedSurveys = [...filteredSurveys].sort((a, b) => {
     switch (sortBy) {
-      case 'responses': return b.responses - a.responses;
-      case 'views': return b.views - a.views;
+      case 'responses': return (b.responses || 0) - (a.responses || 0);
+      case 'views': return (b.views || 0) - (a.views || 0);
       case 'ai': return (b.aiScore || 0) - (a.aiScore || 0);
-      default: return new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime();
+      default: return new Date(b.lastModified || b.createdAt).getTime() - new Date(a.lastModified || a.createdAt).getTime();
     }
   });
 
@@ -209,8 +158,28 @@ const Forms: React.FC = () => {
               >
                 AI destekli anket yönetimi ve analizi
               </motion.p>
+              {error && (
+                <motion.div 
+                  className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg flex items-center space-x-2"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <AlertCircle className="w-5 h-5 text-red-400" />
+                  <span className="text-red-300 text-sm">{error}</span>
+                </motion.div>
+              )}
             </div>
             <div className="flex items-center space-x-4">
+              <motion.button
+                onClick={handleRefresh}
+                disabled={isLoading}
+                className="px-4 py-3 bg-gradient-to-r from-gray-600 to-slate-600 text-white rounded-2xl font-medium shadow-2xl flex items-center space-x-2 disabled:opacity-50"
+                whileHover={{ scale: isLoading ? 1 : 1.05, y: isLoading ? 0 : -2 }}
+                whileTap={{ scale: isLoading ? 1 : 0.95 }}
+              >
+                <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+                <span>Yenile</span>
+              </motion.button>
               <motion.button
                 onClick={() => setShowAIModal(true)}
                 className="px-4 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl font-medium shadow-2xl flex items-center space-x-2"
@@ -344,7 +313,40 @@ const Forms: React.FC = () => {
 
         {/* Surveys Grid/List */}
         <AnimatePresence mode="wait">
-          {viewMode === 'grid' ? (
+          {isLoading ? (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="flex items-center justify-center py-20"
+            >
+              <div className="text-center">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"
+                />
+                <p className="text-blue-200 text-lg">Anketler yükleniyor...</p>
+              </div>
+            </motion.div>
+          ) : sortedSurveys.length === 0 ? (
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="flex items-center justify-center py-20"
+            >
+              <div className="text-center">
+                <FileText className="w-16 h-16 text-blue-400/50 mx-auto mb-4" />
+                <p className="text-blue-200 text-lg mb-2">Henüz anket oluşturmadınız</p>
+                <p className="text-blue-300 text-sm">İlk anketinizi oluşturmak için "Yeni Anket" butonuna tıklayın</p>
+              </div>
+            </motion.div>
+          ) : viewMode === 'grid' ? (
             <motion.div
               key="grid"
               initial={{ opacity: 0, y: 20 }}
@@ -366,7 +368,7 @@ const Forms: React.FC = () => {
                     z: 50
                   }}
                   transition={{ type: "spring", stiffness: 300, duration: 0.5, delay: index * 0.1 }}
-                  onMouseEnter={() => setHoveredSurvey(survey.id)}
+                  onMouseEnter={() => setHoveredSurvey(survey.id.toString())}
                   onMouseLeave={() => setHoveredSurvey(null)}
                 >
                   <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-xl hover:shadow-2xl border border-white/20 overflow-hidden relative">
@@ -375,7 +377,7 @@ const Forms: React.FC = () => {
                       {survey.backgroundImage ? (
                         <img
                           src={survey.backgroundImage}
-                          alt={survey.title}
+                          alt={survey.surveyName}
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -388,7 +390,7 @@ const Forms: React.FC = () => {
                       <motion.button
                         onClick={(e) => {
                           e.stopPropagation();
-                          setShowImageUpload(survey.id);
+                          setShowImageUpload(survey.id.toString());
                         }}
                         className="absolute top-3 right-3 p-2 bg-white/20 hover:bg-white/30 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-xl"
                         whileHover={{ scale: 1.1 }}
@@ -399,15 +401,15 @@ const Forms: React.FC = () => {
                       
                       {/* Status Badge */}
                       <div className="absolute top-3 left-3">
-                        <div className={`px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${getStatusColor(survey.status)} text-white shadow-lg`}>
-                          {getStatusText(survey.status)}
+                        <div className={`px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${getStatusColor(survey.status || 'draft')} text-white shadow-lg`}>
+                          {getStatusText(survey.status || 'draft')}
                         </div>
                       </div>
 
                       {/* Category Badge */}
                       <div className="absolute bottom-3 left-3">
-                        <div className={`px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${getCategoryColor(survey.category)} text-white shadow-lg`}>
-                          {survey.category}
+                        <div className={`px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${getCategoryColor(survey.category || 'Genel')} text-white shadow-lg`}>
+                          {survey.category || 'Genel'}
                         </div>
                       </div>
 
@@ -426,13 +428,13 @@ const Forms: React.FC = () => {
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
                           <h3 className="font-semibold text-white text-xl group-hover:text-purple-200 transition-colors mb-2">
-                            {survey.title}
+                            {survey.surveyName}
                           </h3>
-                          <p className="text-purple-200 text-sm line-clamp-2 mb-3">{survey.description}</p>
+                          <p className="text-purple-200 text-sm line-clamp-2 mb-3">{survey.surveyDescription}</p>
                           
                           {/* Tags */}
                           <div className="flex flex-wrap gap-2 mb-4">
-                            {survey.tags.slice(0, 3).map((tag, tagIndex) => (
+                            {survey.tags && survey.tags.slice(0, 3).map((tag, tagIndex) => (
                               <span key={tagIndex} className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded-lg text-xs">
                                 {tag}
                               </span>
@@ -450,21 +452,21 @@ const Forms: React.FC = () => {
                       {/* Statistics */}
                       <div className="grid grid-cols-3 gap-4 mb-4">
                         <div className="text-center">
-                          <div className="text-xl font-semibold text-white">{survey.responses}</div>
+                          <div className="text-xl font-semibold text-white">{survey.responses || 0}</div>
                           <div className="text-xs text-purple-300">Yanıt</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-xl font-semibold text-white">{survey.views}</div>
+                          <div className="text-xl font-semibold text-white">{survey.views || 0}</div>
                           <div className="text-xs text-purple-300">Görüntü</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-xl font-semibold text-white">{survey.completionRate}%</div>
+                          <div className="text-xl font-semibold text-white">{survey.completionRate || 0}%</div>
                           <div className="text-xs text-purple-300">Tamamlanma</div>
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between text-sm text-purple-300">
-                        <span>{survey.lastModified}</span>
+                        <span>{survey.lastModified || survey.createdAt}</span>
                         <div className="flex items-center space-x-1">
                           <FileText className="w-4 h-4" />
                           <span>{survey.questions} soru</span>
@@ -512,22 +514,22 @@ const Forms: React.FC = () => {
                               <FileText className="w-6 h-6 text-white" />
                             </div>
                             <div>
-                              <div className="text-sm font-medium text-white">{survey.title}</div>
-                              <div className="text-sm text-purple-300">{survey.description}</div>
+                              <div className="text-sm font-medium text-white">{survey.surveyName}</div>
+                              <div className="text-sm text-purple-300">{survey.surveyDescription}</div>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-3 py-1 text-xs font-medium rounded-full bg-gradient-to-r ${getStatusColor(survey.status)} text-white`}>
-                            {getStatusText(survey.status)}
+                          <span className={`px-3 py-1 text-xs font-medium rounded-full bg-gradient-to-r ${getStatusColor(survey.status || 'draft')} text-white`}>
+                            {getStatusText(survey.status || 'draft')}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-3 py-1 text-xs font-medium rounded-full bg-gradient-to-r ${getCategoryColor(survey.category)} text-white`}>
-                            {survey.category}
+                          <span className={`px-3 py-1 text-xs font-medium rounded-full bg-gradient-to-r ${getCategoryColor(survey.category || 'Genel')} text-white`}>
+                            {survey.category || 'Genel'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-white">{survey.responses}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-white">{survey.responses || 0}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {survey.aiScore ? (
                             <div className="flex items-center space-x-2">
@@ -538,7 +540,7 @@ const Forms: React.FC = () => {
                             <span className="text-sm text-purple-300">-</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-purple-300">{survey.lastModified}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-purple-300">{survey.lastModified || survey.createdAt}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex items-center space-x-3">
                             <motion.button 

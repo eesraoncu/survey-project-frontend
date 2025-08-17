@@ -88,7 +88,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return false;
     } catch (error) {
       console.error('Register error:', error);
-      return false;
+      // Hatayı yeniden fırlat ki component'te yakalanabilsin
+      throw error;
     }
   };
 

@@ -33,4 +33,49 @@
   .dark select {
     color: #ffffff !important; /* text-white */
   }
+
+  /* Placeholder stilleri için - daha güçlü kurallar */
+  input::placeholder,
+  input::-webkit-input-placeholder,
+  input::-moz-placeholder,
+  input:-ms-input-placeholder {
+    opacity: 0.3 !important;
+    color: #9ca3af !important; /* text-gray-400 */
+    font-weight: normal !important;
+  }
+
+  input:focus::placeholder,
+  input:focus::-webkit-input-placeholder,
+  input:focus::-moz-placeholder,
+  input:focus:-ms-input-placeholder {
+    opacity: 0.2 !important;
+    color: #9ca3af !important;
+  }
+
+  /* FormBuilder'daki özel input'lar için */
+  .bg-white input::placeholder,
+  .bg-white input::-webkit-input-placeholder,
+  .bg-white input::-moz-placeholder,
+  .bg-white input:-ms-input-placeholder {
+    opacity: 0.3 !important;
+    color: #6b7280 !important; /* text-gray-500 */
+  }
+
+  /* Question input'ları için özel placeholder stilleri */
+  .question-input::placeholder,
+  .question-input::-webkit-input-placeholder,
+  .question-input::-moz-placeholder,
+  .question-input:-ms-input-placeholder {
+    opacity: 0.25 !important;
+    color: #9ca3af !important;
+    font-weight: normal !important;
+  }
+
+  .question-input:focus::placeholder,
+  .question-input:focus::-webkit-input-placeholder,
+  .question-input:focus::-moz-placeholder,
+  .question-input:focus:-ms-input-placeholder {
+    opacity: 0.15 !important;
+    color: #9ca3af !important;
+  }
 }

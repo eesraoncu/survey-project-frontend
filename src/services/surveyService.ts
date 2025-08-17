@@ -117,7 +117,7 @@ export const surveyService = {
     try {
       console.log('📝 Anket oluşturuluyor...');
       console.log('📤 Gönderilen veri:', surveyData);
-      const response = await apiClient.post<FormData>('/Surveys/create', surveyData);
+      const response = await apiClient.post<FormData>('/Surveys', surveyData);
       console.log('✅ Anket başarıyla oluşturuldu:', response.data);
       return response.data;
     } catch (error: any) {

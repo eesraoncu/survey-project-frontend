@@ -1,40 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
   Search, 
-  Filter, 
   Grid3X3, 
   List, 
-  MoreVertical, 
-  Users, 
-  BarChart3,
+  MoreVertical,
   Image as ImageIcon,
   FileText,
-  Calendar,
   Edit,
   Trash2,
   Eye,
-  Download,
   Upload,
-  Settings,
   Sparkles,
   TrendingUp,
   Target,
-  Zap,
   Lightbulb,
-  Rocket,
-  Star,
-  Palette,
-  Wand2,
   Brain,
-  ChartBar,
-  Clock,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  X,
+  BarChart3
 } from 'lucide-react';
 import { surveyService, type Survey } from '../services/surveyService';
+import { aiService, type AISurveyAnalysis } from '../services/aiService';
 
 
 
@@ -43,15 +33,31 @@ const Forms: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [hoveredSurvey, setHoveredSurvey] = useState<string | null>(null);
+
   const [showImageUpload, setShowImageUpload] = useState<string | null>(null);
   const [showAIModal, setShowAIModal] = useState(false);
   const [sortBy, setSortBy] = useState<'date' | 'responses' | 'views' | 'ai'>('date');
+  const [aiAnalysisModal, setAiAnalysisModal] = useState<{ show: boolean; surveyId?: string; analysis?: AISurveyAnalysis }>({ show: false });
+  const [isAIAnalyzing, setIsAIAnalyzing] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string>('');
+  
+  // AI Insights
+  const [aiInsightsModal, setAiInsightsModal] = useState<{ show: boolean; surveyId?: string; insights?: any[] }>({ show: false });
+  const [isAIInsightsLoading, setIsAIInsightsLoading] = useState<string | null>(null);
+  
+  // AI Summary
+  const [aiSummaryModal, setAiSummaryModal] = useState<{ show: boolean; surveyId?: string; summary?: any }>({ show: false });
+  const [isAISummaryLoading, setIsAISummaryLoading] = useState<string | null>(null);
+  
+  // AI Report
+  const [aiReportModal, setAiReportModal] = useState<{ show: boolean; surveyId?: string; report?: any }>({ show: false });
+  const [isAIReportLoading, setIsAIReportLoading] = useState<string | null>(null);
   
   // Backend'den gelen veriler için state'ler
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hoveredSurvey, setHoveredSurvey] = useState<string | null>(null);
 
   // Backend'den anketleri yükle
   useEffect(() => {
@@ -76,6 +82,95 @@ const Forms: React.FC = () => {
 
   const handleRefresh = () => {
     loadSurveys();
+  };
+
+  // AI analizi fonksiyonu
+  const handleAIAnalyze = async (surveyId: string) => {
+    setIsAIAnalyzing(surveyId);
+    setAiError('');
+    
+    try {
+      const analysis = await aiService.analyzeSurvey(surveyId);
+      
+      setAiAnalysisModal({
+        show: true,
+        surveyId,
+        analysis
+      });
+      
+    } catch (error: any) {
+      const errorMessage = aiService.formatErrorMessage(error);
+      setAiError(errorMessage);
+      
+      // Error'u göstermek için boş analiz modal'ı aç
+      setAiAnalysisModal({
+        show: true,
+        surveyId,
+        analysis: undefined
+      });
+    } finally {
+      setIsAIAnalyzing(null);
+    }
+  };
+
+  // AI Insights fonksiyonu
+  const handleAIInsights = async (surveyId: string) => {
+    setIsAIInsightsLoading(surveyId);
+    
+    try {
+      const insights = await aiService.getInsights(surveyId);
+      setAiInsightsModal({
+        show: true,
+        surveyId,
+        insights
+      });
+    } catch (error: any) {
+      const errorMessage = aiService.formatErrorMessage(error);
+      setAiError(errorMessage);
+      console.error('AI insights hatası:', error);
+    } finally {
+      setIsAIInsightsLoading(null);
+    }
+  };
+
+  // AI Summary fonksiyonu
+  const handleAISummary = async (surveyId: string) => {
+    setIsAISummaryLoading(surveyId);
+    
+    try {
+      const summary = await aiService.getSummary(surveyId);
+      setAiSummaryModal({
+        show: true,
+        surveyId,
+        summary
+      });
+    } catch (error: any) {
+      const errorMessage = aiService.formatErrorMessage(error);
+      setAiError(errorMessage);
+      console.error('AI summary hatası:', error);
+    } finally {
+      setIsAISummaryLoading(null);
+    }
+  };
+
+  // AI Report fonksiyonu
+  const handleAIReport = async (surveyId: string) => {
+    setIsAIReportLoading(surveyId);
+    
+    try {
+      const report = await aiService.getReport(surveyId);
+      setAiReportModal({
+        show: true,
+        surveyId,
+        report
+      });
+    } catch (error: any) {
+      const errorMessage = aiService.formatErrorMessage(error);
+      setAiError(errorMessage);
+      console.error('AI raporu hatası:', error);
+    } finally {
+      setIsAIReportLoading(null);
+    }
   };
 
   const categories = ['Tümü', 'Ürün', 'Müşteri', 'İnsan Kaynakları', 'Eğitim', 'Pazarlama', 'Teknoloji'];
@@ -544,6 +639,85 @@ const Forms: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex items-center space-x-3">
                             <motion.button 
+                              onClick={() => handleAIAnalyze(survey.id)}
+                              disabled={isAIAnalyzing === survey.id}
+                              className="text-indigo-400 hover:text-indigo-200 transition-colors disabled:opacity-50"
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              title="AI Analizi"
+                            >
+                              {isAIAnalyzing === survey.id ? (
+                                <motion.div
+                                  animate={{ rotate: 360 }}
+                                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                >
+                                  <RefreshCw className="w-4 h-4" />
+                                </motion.div>
+                              ) : (
+                                <Brain className="w-4 h-4" />
+                              )}
+                            </motion.button>
+                            
+                            <motion.button 
+                              onClick={() => handleAIInsights(survey.id)}
+                              disabled={isAIInsightsLoading === survey.id}
+                              className="text-emerald-400 hover:text-emerald-200 transition-colors disabled:opacity-50"
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              title="AI Insights"
+                            >
+                              {isAIInsightsLoading === survey.id ? (
+                                <motion.div
+                                  animate={{ rotate: 360 }}
+                                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                >
+                                  <RefreshCw className="w-4 h-4" />
+                                </motion.div>
+                              ) : (
+                                <Lightbulb className="w-4 h-4" />
+                              )}
+                            </motion.button>
+                            
+                            <motion.button 
+                              onClick={() => handleAISummary(survey.id)}
+                              disabled={isAISummaryLoading === survey.id}
+                              className="text-amber-400 hover:text-amber-200 transition-colors disabled:opacity-50"
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              title="AI Özeti"
+                            >
+                              {isAISummaryLoading === survey.id ? (
+                                <motion.div
+                                  animate={{ rotate: 360 }}
+                                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                >
+                                  <RefreshCw className="w-4 h-4" />
+                                </motion.div>
+                              ) : (
+                                <FileText className="w-4 h-4" />
+                              )}
+                            </motion.button>
+                            
+                            <motion.button 
+                              onClick={() => handleAIReport(survey.id)}
+                              disabled={isAIReportLoading === survey.id}
+                              className="text-cyan-400 hover:text-cyan-200 transition-colors disabled:opacity-50"
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              title="AI Raporu"
+                            >
+                              {isAIReportLoading === survey.id ? (
+                                <motion.div
+                                  animate={{ rotate: 360 }}
+                                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                >
+                                  <RefreshCw className="w-4 h-4" />
+                                </motion.div>
+                              ) : (
+                                <BarChart3 className="w-4 h-4" />
+                              )}
+                            </motion.button>
+                            <motion.button 
                               className="text-purple-400 hover:text-purple-200 transition-colors"
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
@@ -679,6 +853,368 @@ const Forms: React.FC = () => {
                     </li>
                   </ul>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* AI Analizi Modal */}
+        {aiAnalysisModal.show && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-indigo-500 to-blue-600 px-6 py-4 text-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Brain className="w-6 h-6" />
+                    <h3 className="text-xl font-bold">AI Anket Analizi</h3>
+                  </div>
+                  <button
+                    onClick={() => setAiAnalysisModal({ show: false })}
+                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                {aiError ? (
+                  <div className="text-center py-8">
+                    <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                    <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Analiz Hatası</h4>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">{aiError}</p>
+                    <button
+                      onClick={() => aiAnalysisModal.surveyId && handleAIAnalyze(aiAnalysisModal.surveyId)}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                    >
+                      Tekrar Dene
+                    </button>
+                  </div>
+                ) : aiAnalysisModal.analysis ? (
+                  <div className="space-y-6">
+                    {/* Genel Skor */}
+                    <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-xl p-6 border border-green-500/30">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Genel AI Skoru</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Anket kalitesi ve etkililği</p>
+                        </div>
+                        <div className="text-3xl font-bold text-green-600">
+                          {aiAnalysisModal.analysis.overallScore}/100
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Öneriler */}
+                    {aiAnalysisModal.analysis.recommendations.length > 0 && (
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">AI Önerileri</h4>
+                        <div className="space-y-3">
+                          {aiAnalysisModal.analysis.recommendations.map((rec, index) => (
+                            <div key={index} className={`p-4 rounded-lg border ${
+                              rec.impact === 'high' ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' :
+                              rec.impact === 'medium' ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800' :
+                              'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
+                            }`}>
+                              <div className="flex items-start space-x-3">
+                                <span className={`text-sm font-medium px-2 py-1 rounded ${
+                                  rec.impact === 'high' ? 'bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-200' :
+                                  rec.impact === 'medium' ? 'bg-yellow-200 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200' :
+                                  'bg-blue-200 text-blue-800 dark:bg-blue-800 dark:text-blue-200'
+                                }`}>
+                                  {rec.impact === 'high' ? 'Yüksek' : rec.impact === 'medium' ? 'Orta' : 'Düşük'} Etki
+                                </span>
+                                <div className="flex-1">
+                                  <h5 className="font-medium text-gray-900 dark:text-white">{rec.title}</h5>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{rec.description}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* İçgörüler */}
+                    {aiAnalysisModal.analysis.insights.length > 0 && (
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">AI İçgörüleri</h4>
+                        <div className="space-y-3">
+                          {aiAnalysisModal.analysis.insights.map((insight, index) => (
+                            <div key={index} className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                              <div className="flex items-start space-x-3">
+                                <Lightbulb className="w-5 h-5 text-yellow-500 mt-0.5" />
+                                <div className="flex-1">
+                                  <h5 className="font-medium text-gray-900 dark:text-white">{insight.category}</h5>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{insight.insight}</p>
+                                  <div className="flex items-center mt-2">
+                                    <span className="text-xs text-gray-500">Güven: {insight.confidence}%</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Optimizasyon Önerileri */}
+                    {aiAnalysisModal.analysis.optimizationSuggestions.length > 0 && (
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Optimizasyon Önerileri</h4>
+                        <ul className="space-y-2">
+                          {aiAnalysisModal.analysis.optimizationSuggestions.map((suggestion, index) => (
+                            <li key={index} className="flex items-start space-x-3 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
+                              <Target className="w-4 h-4 text-indigo-600 mt-0.5" />
+                              <span className="text-sm text-gray-700 dark:text-gray-300">{suggestion}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Beklenen Yanıt Oranı */}
+                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
+                      <div className="flex items-center space-x-3">
+                        <TrendingUp className="w-8 h-8 text-blue-600" />
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Beklenen Yanıt Oranı</h4>
+                          <p className="text-2xl font-bold text-blue-600">%{aiAnalysisModal.analysis.expectedResponseRate}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">AI tahmin modeline göre</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    >
+                      <Brain className="w-16 h-16 text-indigo-600 mx-auto mb-4" />
+                    </motion.div>
+                    <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">AI Analizi Yapılıyor</h4>
+                    <p className="text-gray-600 dark:text-gray-400">Anketiniz detaylı olarak analiz ediliyor...</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* AI Insights Modal */}
+        {aiInsightsModal.show && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+            >
+              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-4 text-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Lightbulb className="w-6 h-6" />
+                    <h3 className="text-xl font-bold">AI Insights</h3>
+                  </div>
+                  <button
+                    onClick={() => setAiInsightsModal({ show: false })}
+                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                {aiInsightsModal.insights ? (
+                  <div className="space-y-4">
+                    {aiInsightsModal.insights.map((insight: any, index: number) => (
+                      <div key={index} className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
+                        <div className="flex items-start space-x-3">
+                          <Lightbulb className="w-5 h-5 text-emerald-500 mt-0.5" />
+                          <div className="flex-1">
+                            <h5 className="font-medium text-gray-900 dark:text-white">{insight.category}</h5>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{insight.insight}</p>
+                            <div className="flex items-center mt-2">
+                              <span className="text-xs text-gray-500">Güven: {insight.confidence}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600 dark:text-gray-400">Insights yükleniyor...</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* AI Summary Modal */}
+        {aiSummaryModal.show && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+            >
+              <div className="bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-4 text-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <FileText className="w-6 h-6" />
+                    <h3 className="text-xl font-bold">AI Özeti</h3>
+                  </div>
+                  <button
+                    onClick={() => setAiSummaryModal({ show: false })}
+                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                {aiSummaryModal.summary ? (
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Özet</h4>
+                      <p className="text-gray-700 dark:text-gray-300">{aiSummaryModal.summary.summary}</p>
+                    </div>
+                    
+                    {aiSummaryModal.summary.keyPoints && (
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Ana Noktalar</h4>
+                        <ul className="space-y-2">
+                          {aiSummaryModal.summary.keyPoints.map((point: string, index: number) => (
+                            <li key={index} className="flex items-start space-x-2">
+                              <div className="w-2 h-2 bg-amber-500 rounded-full mt-2"></div>
+                              <span className="text-gray-700 dark:text-gray-300">{point}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <div className="text-center">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Sentiment</p>
+                        <p className="font-medium">{aiSummaryModal.summary.sentiment}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Güven</p>
+                        <p className="font-medium">{aiSummaryModal.summary.confidence}%</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600 dark:text-gray-400">Özet hazırlanıyor...</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* AI Report Modal */}
+        {aiReportModal.show && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden"
+            >
+              <div className="bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-4 text-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <BarChart3 className="w-6 h-6" />
+                    <h3 className="text-xl font-bold">AI Raporu</h3>
+                  </div>
+                  <button
+                    onClick={() => setAiReportModal({ show: false })}
+                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                {aiReportModal.report ? (
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Genel Bakış</h4>
+                      <p className="text-gray-700 dark:text-gray-300">{aiReportModal.report.overview}</p>
+                    </div>
+                    
+                    {aiReportModal.report.insights && (
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Analiz Sonuçları</h4>
+                        <div className="grid gap-4">
+                          {aiReportModal.report.insights.map((insight: any, index: number) => (
+                            <div key={index} className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
+                              <h5 className="font-medium text-gray-900 dark:text-white">{insight.category}</h5>
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{insight.insight}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {aiReportModal.report.recommendations && (
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Öneriler</h4>
+                        <div className="space-y-3">
+                          {aiReportModal.report.recommendations.map((rec: any, index: number) => (
+                            <div key={index} className="p-4 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg">
+                              <h5 className="font-medium text-gray-900 dark:text-white">{rec.title}</h5>
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{rec.description}</p>
+                              <div className="flex items-center space-x-4 mt-2">
+                                <span className="text-xs px-2 py-1 bg-cyan-100 text-cyan-800 dark:bg-cyan-800 dark:text-cyan-200 rounded">
+                                  Etki: {rec.impact}
+                                </span>
+                                <span className="text-xs px-2 py-1 bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 rounded">
+                                  Kategori: {rec.category}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {aiReportModal.report.exportUrl && (
+                      <div className="pt-4 border-t border-gray-200 dark:border-gray-600">
+                        <a
+                          href={aiReportModal.report.exportUrl}
+                          className="inline-flex items-center px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <FileText className="w-4 h-4 mr-2" />
+                          Raporu İndir
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600 dark:text-gray-400">Rapor hazırlanıyor...</p>
+                  </div>
+                )}
               </div>
             </motion.div>
           </div>

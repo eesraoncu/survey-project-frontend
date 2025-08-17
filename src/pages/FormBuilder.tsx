@@ -10,7 +10,6 @@ import {
   Upload,
   Trash2,
   Copy,
-  Move,
   Type,
   CheckSquare,
   Radio,
@@ -25,9 +24,13 @@ import {
   ChevronUp,
   GripVertical,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  Sparkles,
+  X,
+  RefreshCw
 } from 'lucide-react';
 import { surveyService, type FormData as SurveyFormData } from '../services/surveyService';
+import { aiService, type AIQuestionSuggestion } from '../services/aiService';
 
 interface Question {
   id: string;
@@ -75,9 +78,208 @@ const FormBuilder: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'builder' | 'preview' | 'settings'>('builder');
   const [showImageUpload, setShowImageUpload] = useState(false);
-  const [draggedQuestion, setDraggedQuestion] = useState<string | null>(null);
+  // const [draggedQuestion, setDraggedQuestion] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  const [showAIQuestions, setShowAIQuestions] = useState(false);
+  const [aiQuestionSuggestions, setAiQuestionSuggestions] = useState<AIQuestionSuggestion[]>([]);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [aiError, setAiError] = useState<string>('');
+  const [sentimentModal, setSentimentModal] = useState<{ show: boolean; text?: string; result?: any }>({ show: false });
+  const [isSentimentAnalyzing, setIsSentimentAnalyzing] = useState(false);
+
+  // AI'dan gelen anket verilerini yükle
+  useEffect(() => {
+    console.log('🔍 FormBuilder başladı, AI verisi kontrol ediliyor...');
+    
+    const aiGeneratedData = localStorage.getItem('aiGeneratedSurvey');
+    console.log('🔍 AI verisi raw data:', aiGeneratedData);
+    
+    if (aiGeneratedData) {
+      try {
+        const aiSurvey = JSON.parse(aiGeneratedData);
+        console.log('📊 AI anket parse edildi:', aiSurvey);
+        
+        // AI verilerini FormBuilder formatına dönüştür
+        const aiQuestions: Question[] = aiSurvey.questions?.map((q: any, index: number) => ({
+          id: `ai-question-${index}`,
+          type: mapAIQuestionType(q.questionType || q.question_type || q.type),
+          title: q.questionsText || q.question_text || q.question || `Soru ${index + 1}`,
+          required: q.required || false,
+          options: q.choices || q.options || [],
+          placeholder: `${q.questionsText || q.question_text || q.question || 'Bu soru'} için yanıtınızı girin`,
+          description: ''
+        })) || [];
+
+        console.log('🔄 AI soruları dönüştürüldü:', aiQuestions);
+
+        setFormData({
+          title: aiSurvey.surveyName || aiSurvey.survey_title || aiSurvey.title || 'AI ile Oluşturulan Anket',
+          description: aiSurvey.surveyDescription || aiSurvey.survey_description || aiSurvey.description || '',
+          backgroundImage: '',
+          questions: aiQuestions,
+          settings: {
+            allowAnonymous: true,
+            showProgressBar: true,
+            allowMultipleResponses: false,
+            theme: 'light'
+          },
+          status: 'draft',
+          category: 'Genel',
+          tags: ['AI-Generated']
+        });
+
+        console.log('💾 FormData güncellendi, soru sayısı:', aiQuestions.length);
+
+        // Başarı mesajı göster
+        setSaveMessage({ 
+          type: 'success', 
+          message: `AI tarafından ${aiQuestions.length} soru ile anket oluşturuldu!` 
+        });
+
+        // localStorage'dan sil
+        localStorage.removeItem('aiGeneratedSurvey');
+        
+        // 5 saniye sonra mesajı kaldır
+        setTimeout(() => setSaveMessage(null), 5000);
+        
+      } catch (error) {
+        console.error('💥 AI verisi parse edilemedi:', error);
+        setSaveMessage({ 
+          type: 'error', 
+          message: 'AI verisi yüklenirken hata oluştu.' 
+        });
+        localStorage.removeItem('aiGeneratedSurvey');
+      }
+    }
+  }, []);
+
+
+
+  // FormData questions değişikliğini izle
+  useEffect(() => {
+    console.log('📝 FormData Questions Güncellemesi:', {
+      questionsCount: formData.questions.length,
+      questions: formData.questions.map((q, i) => `${i+1}. ${q.title}`)
+    });
+  }, [formData.questions]);
+
+  // AI soru tipini FormBuilder tipine dönüştür
+  const mapAIQuestionType = (aiType: string): Question['type'] => {
+    console.log('🔍 AI Question Type Mapping:', aiType);
+    
+    switch (aiType?.toLowerCase()) {
+      case 'multiple_choice':
+      case 'single_choice':
+        console.log('✅ multiple_choice → radio');
+        return 'radio';
+      case 'text':
+      case 'textarea':
+        console.log('✅ text → text');
+        return 'text';
+      case 'rating':
+      case 'scale':
+        console.log('✅ rating → rating');
+        return 'rating';
+      case 'yes_no':
+      case 'boolean':
+        console.log('✅ yes_no → radio');
+        return 'radio';
+      case 'dropdown':
+      case 'select':
+        console.log('✅ dropdown → select');
+        return 'select';
+      case 'checkbox':
+      case 'multiple_select':
+        console.log('✅ checkbox → checkbox');
+        return 'checkbox';
+      default:
+        console.log('⚠️ Unknown type, defaulting to text:', aiType);
+        return 'text';
+    }
+  };
+
+  // AI'dan soru önerileri al
+  const handleAIQuestionSuggestions = async () => {
+    setIsLoadingAI(true);
+    setAiError('');
+    
+    try {
+      const context = {
+        surveyTitle: formData.title,
+        surveyDescription: formData.description,
+        existingQuestions: formData.questions.map(q => q.title),
+        category: formData.category
+      };
+      
+      const suggestions = await aiService.generateQuestions(context);
+      setAiQuestionSuggestions(suggestions);
+      setShowAIQuestions(true);
+      
+    } catch (error: any) {
+      const errorMessage = aiService.formatErrorMessage(error);
+      setAiError(errorMessage);
+      setSaveMessage({ type: 'error', message: errorMessage });
+      setTimeout(() => setSaveMessage(null), 5000);
+    } finally {
+      setIsLoadingAI(false);
+    }
+  };
+
+  // AI önerilen soruyu formuna ekle
+  const addAIQuestion = (suggestion: AIQuestionSuggestion) => {
+    const newQuestion: Question = {
+      id: `ai-${Date.now()}`,
+      type: mapAIQuestionType(suggestion.type),
+      title: suggestion.question,
+      required: false,
+      options: suggestion.options || [],
+      placeholder: `${suggestion.question} için yanıtınızı girin`,
+      description: suggestion.reasoning
+    };
+
+    setFormData(prev => ({
+      ...prev,
+      questions: [...prev.questions, newQuestion]
+    }));
+
+    // Eklenen soruyu listeden kaldır
+    setAiQuestionSuggestions(prev => 
+      prev.filter(s => s.question !== suggestion.question)
+    );
+
+    setSaveMessage({ 
+      type: 'success', 
+      message: 'AI önerisi başarıyla eklendi!' 
+    });
+    setTimeout(() => setSaveMessage(null), 3000);
+  };
+
+  // Sentiment analizi fonksiyonu
+  const handleSentimentAnalyze = async (text: string) => {
+    if (!text.trim()) {
+      setSaveMessage({ type: 'error', message: 'Analiz için metin gerekli!' });
+      setTimeout(() => setSaveMessage(null), 3000);
+      return;
+    }
+
+    setIsSentimentAnalyzing(true);
+    
+    try {
+      const result = await aiService.analyzeSentiment(text);
+      setSentimentModal({
+        show: true,
+        text,
+        result
+      });
+    } catch (error: any) {
+      const errorMessage = aiService.formatErrorMessage(error);
+      setSaveMessage({ type: 'error', message: errorMessage });
+      setTimeout(() => setSaveMessage(null), 5000);
+    } finally {
+      setIsSentimentAnalyzing(false);
+    }
+  };
 
   const questionTypes = [
     { type: 'text' as const, label: 'Kısa Metin', icon: <Type className="w-5 h-5" />, color: 'bg-blue-500' },
@@ -125,6 +327,8 @@ const FormBuilder: React.FC = () => {
         return;
       }
 
+      console.log('🔍 FormBuilder Questions:', formData.questions);
+
       // Backend'e gönderilecek veriyi hazırla
       const surveyData: SurveyFormData = {
         surveyName: formData.title,
@@ -132,15 +336,28 @@ const FormBuilder: React.FC = () => {
         surveyTypeId: 1, // Varsayılan tip ID
         isActive: formData.status === 'active',
         backgroundImage: formData.backgroundImage,
-        questions: formData.questions,
+        // Questions'ları backend formatına dönüştür
+        questions: formData.questions.map(q => ({
+          id: q.id,
+          type: q.type,
+          title: q.title,
+          required: q.required,
+          options: q.options || [],
+          placeholder: q.placeholder || '',
+          description: q.description || ''
+        })),
         settings: formData.settings,
         status: formData.status,
         category: formData.category,
         tags: formData.tags
       };
 
+      console.log('📤 Backend\'e gönderilecek veri:', surveyData);
+
       // Backend'e kaydet
       const savedSurvey = await surveyService.createSurvey(surveyData);
+      
+      console.log('✅ Anket başarıyla kaydedildi:', savedSurvey);
       
       setSaveMessage({ type: 'success', message: 'Anket başarıyla kaydedildi!' });
       
@@ -150,11 +367,29 @@ const FormBuilder: React.FC = () => {
       }, 2000);
 
     } catch (error: any) {
-      console.error('Error saving survey:', error);
-      setSaveMessage({ 
-        type: 'error', 
-        message: error.message || 'Anket kaydedilirken bir hata oluştu' 
+      console.error('❌ Anket kaydedilirken hata:', error);
+      console.error('📋 Hata detayları:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
       });
+      
+      // Daha detaylı hata mesajı
+      let errorMessage = 'Anket kaydedilirken bir hata oluştu';
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      } else if (error.response?.status === 400) {
+        errorMessage = 'Gönderilen veri formatı hatalı. Lütfen tüm alanları kontrol edin.';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Oturum süresi dolmuş. Lütfen tekrar giriş yapın.';
+      } else if (error.response?.status === 500) {
+        errorMessage = 'Sunucu hatası. Lütfen daha sonra tekrar deneyin.';
+      }
+      
+      setSaveMessage({ type: 'error', message: errorMessage });
     } finally {
       setIsSaving(false);
     }
@@ -193,154 +428,19 @@ const FormBuilder: React.FC = () => {
     }
   };
 
-  const handleImageUpload = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setFormData(prev => ({
-        ...prev,
-        backgroundImage: e.target?.result as string
-      }));
-    };
-    reader.readAsDataURL(file);
-    setShowImageUpload(false);
-  };
+  // const handleImageUpload = (file: File) => {
+  //   const reader = new FileReader();
+  //   reader.onload = (e) => {
+  //     setFormData(prev => ({
+  //       ...prev,
+  //       backgroundImage: e.target?.result as string
+  //     }));
+  //   };
+  //   reader.readAsDataURL(file);
+  //   setShowImageUpload(false);
+  // };
 
-  const renderQuestionEditor = (question: Question) => {
-    return (
-      <motion.div
-        key={question.id}
-        layout
-        className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4"
-      >
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-gray-100 rounded-lg">
-              <GripVertical className="w-4 h-4 text-gray-500" />
-            </div>
-            <div className="flex items-center space-x-2">
-              {questionTypes.find(qt => qt.type === question.type)?.icon}
-              <span className="text-sm font-medium text-gray-600">
-                {questionTypes.find(qt => qt.type === question.type)?.label}
-              </span>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <motion.button
-              onClick={() => duplicateQuestion(question.id)}
-              className="p-2 hover:bg-blue-100 rounded-lg text-blue-600 hover:text-blue-800 transition-colors"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              title="Soru kopyala"
-            >
-              <Copy className="w-4 h-4" />
-            </motion.button>
-            <motion.button
-              onClick={() => deleteQuestion(question.id)}
-              className="p-2 hover:bg-red-100 rounded-lg text-red-600 hover:text-red-800 transition-colors"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              title="Soru sil"
-            >
-              <Trash2 className="w-4 h-4" />
-            </motion.button>
-          </div>
-        </div>
 
-        <div className="space-y-4">
-          <input
-            type="text"
-            value={question.title}
-            onChange={(e) => updateQuestion(question.id, { title: e.target.value })}
-            placeholder="Soru başlığı..."
-            className="w-full text-lg font-medium border-none focus:ring-0 p-0 text-gray-900 question-input"
-            style={{
-              '--tw-placeholder-opacity': '0.25'
-            } as React.CSSProperties}
-          />
-          
-          {question.description !== undefined && (
-            <input
-              type="text"
-              value={question.description}
-              onChange={(e) => updateQuestion(question.id, { description: e.target.value })}
-              placeholder="Soru açıklaması (opsiyonel)..."
-              className="w-full text-sm border-none focus:ring-0 p-0 text-gray-600 question-input"
-              style={{
-                '--tw-placeholder-opacity': '0.25'
-              } as React.CSSProperties}
-            />
-          )}
-
-          {question.placeholder !== undefined && (
-            <input
-              type="text"
-              value={question.placeholder}
-              onChange={(e) => updateQuestion(question.id, { placeholder: e.target.value })}
-              placeholder="Placeholder metni..."
-              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent question-input"
-              style={{
-                '--tw-placeholder-opacity': '0.25'
-              } as React.CSSProperties}
-            />
-          )}
-
-          {(question.type === 'radio' || question.type === 'checkbox' || question.type === 'select') && (
-            <div className="space-y-2">
-              {question.options?.map((option, index) => (
-                <div key={index} className="flex items-center space-x-2">
-                  <input
-                    type="text"
-                    value={option}
-                    onChange={(e) => {
-                      const newOptions = [...(question.options || [])];
-                      newOptions[index] = e.target.value;
-                      updateQuestion(question.id, { options: newOptions });
-                    }}
-                    placeholder={`Seçenek ${index + 1}`}
-                    className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent question-input"
-                    style={{
-                      '--tw-placeholder-opacity': '0.25'
-                    } as React.CSSProperties}
-                  />
-                  <button
-                    onClick={() => {
-                      const newOptions = question.options?.filter((_, i) => i !== index);
-                      updateQuestion(question.id, { options: newOptions });
-                    }}
-                    className="p-1 hover:bg-red-100 rounded text-red-600 hover:text-red-800"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-              <button
-                onClick={() => {
-                  const newOptions = [...(question.options || []), `Seçenek ${(question.options?.length || 0) + 1}`];
-                  updateQuestion(question.id, { options: newOptions });
-                }}
-                className="text-sm text-purple-600 hover:text-purple-800 font-medium"
-              >
-                + Seçenek Ekle
-              </button>
-            </div>
-          )}
-
-          <div className="flex items-center space-x-2">
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={question.required}
-                onChange={(e) => updateQuestion(question.id, { required: e.target.checked })}
-                className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-              />
-              <span className="text-sm text-gray-700">Zorunlu soru</span>
-            </label>
-          </div>
-        </div>
-      </motion.div>
-    );
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 relative overflow-hidden">
@@ -496,13 +596,25 @@ const FormBuilder: React.FC = () => {
               {/* Form Header */}
               <div className="mb-8">
                 <div className="space-y-4">
-                  <input
-                    type="text"
-                    placeholder="Form başlığı..."
-                    value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    className="w-full text-2xl font-bold bg-transparent border-none outline-none text-white placeholder-blue-200"
-                  />
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="text"
+                      placeholder="Form başlığı..."
+                      value={formData.title}
+                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                      className="flex-1 text-2xl font-bold bg-transparent border-none outline-none text-white placeholder-blue-200"
+                    />
+                    {formData.tags.includes('AI-Generated') && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="flex items-center space-x-2 px-3 py-1 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-400/30 rounded-full"
+                      >
+                        <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse"></div>
+                        <span className="text-sm font-medium text-indigo-300">AI Destekli</span>
+                      </motion.div>
+                    )}
+                  </div>
                   <textarea
                     placeholder="Form açıklaması..."
                     value={formData.description}
@@ -531,7 +643,39 @@ const FormBuilder: React.FC = () => {
                       <Plus className="w-12 h-12 text-blue-300" />
                     </div>
                     <h3 className="text-xl font-semibold text-white mb-3">İlk sorunuzu ekleyin</h3>
-                    <p className="text-blue-200">Sol taraftaki soru türlerinden birini seçerek başlayın</p>
+                    <p className="text-blue-200 mb-6">Sol taraftaki soru türlerinden birini seçerek başlayın</p>
+                    
+                    {/* AI Soru Önerisi Butonu */}
+                    <motion.button
+                      onClick={handleAIQuestionSuggestions}
+                      disabled={isLoadingAI || !formData.title.trim()}
+                      className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-medium shadow-lg flex items-center space-x-2 mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      {isLoadingAI ? (
+                        <>
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          >
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                          </motion.div>
+                          <span>AI Önerileri Yükleniyor...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-5 h-5" />
+                          <span>AI'dan Soru Öner</span>
+                        </>
+                      )}
+                    </motion.button>
+                    
+                    {!formData.title.trim() && (
+                      <p className="text-yellow-300 text-sm mt-3">
+                        AI soru önerisi için önce form başlığını girin
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -551,7 +695,7 @@ const FormBuilder: React.FC = () => {
                           </div>
                           <div className="flex items-center space-x-2">
                             <motion.button
-                              onClick={() => console.log('Copy question')}
+                              onClick={() => duplicateQuestion(question.id)}
                               className="p-2 hover:bg-white/10 rounded-xl text-blue-300 hover:text-white transition-colors"
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
@@ -559,7 +703,7 @@ const FormBuilder: React.FC = () => {
                               <Copy className="w-4 h-4" />
                             </motion.button>
                             <motion.button
-                              onClick={() => console.log('Delete question')}
+                              onClick={() => deleteQuestion(question.id)}
                               className="p-2 hover:bg-white/10 rounded-xl text-red-300 hover:text-red-200 transition-colors"
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
@@ -569,64 +713,105 @@ const FormBuilder: React.FC = () => {
                           </div>
                         </div>
                         
-                        <input
-                          type="text"
-                          value={question.title}
-                          onChange={(e) => updateQuestion(question.id, { title: e.target.value })}
-                          className="w-full text-lg font-semibold bg-transparent border-none outline-none text-white mb-3"
-                          placeholder="Soru başlığı..."
-                        />
-                        
-                        {question.type === 'radio' || question.type === 'checkbox' || question.type === 'select' ? (
-                          <div className="space-y-2">
-                            {question.options?.map((option, optionIndex) => (
-                              <div key={optionIndex} className="flex items-center space-x-3">
-                                <input
-                                  type="text"
-                                  value={option}
-                                  onChange={(e) => {
-                                    const newOptions = [...(question.options || [])];
-                                    newOptions[optionIndex] = e.target.value;
-                                    updateQuestion(question.id, { options: newOptions });
-                                  }}
-                                  className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-blue-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent"
-                                  placeholder={`Seçenek ${optionIndex + 1}`}
-                                />
-                                <motion.button
-                                  onClick={() => {
-                                    const newOptions = question.options?.filter((_, i) => i !== optionIndex);
-                                    updateQuestion(question.id, { options: newOptions });
-                                  }}
-                                  className="p-1 hover:bg-white/10 rounded-lg text-red-300 hover:text-red-200 transition-colors"
-                                  whileHover={{ scale: 1.1 }}
-                                  whileTap={{ scale: 0.9 }}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </motion.button>
-                              </div>
-                            ))}
-                            <motion.button
-                              onClick={() => {
-                                const newOptions = [...(question.options || []), `Seçenek ${(question.options?.length || 0) + 1}`];
-                                updateQuestion(question.id, { options: newOptions });
-                              }}
-                              className="px-3 py-2 bg-white/10 hover:bg-white/20 text-blue-300 hover:text-white rounded-lg transition-all duration-300 flex items-center space-x-2"
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                            >
-                              <Plus className="w-4 h-4" />
-                              <span>Seçenek Ekle</span>
-                            </motion.button>
-                          </div>
-                        ) : (
+                        <div className="flex items-center space-x-3 mb-3">
                           <input
                             type="text"
-                            value={question.placeholder || ''}
-                            onChange={(e) => updateQuestion(question.id, { placeholder: e.target.value })}
-                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-blue-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent"
-                            placeholder="Placeholder metni..."
+                            value={question.title}
+                            onChange={(e) => updateQuestion(question.id, { title: e.target.value })}
+                            className="flex-1 text-lg font-semibold bg-transparent border-none outline-none text-white"
+                            placeholder="Soru başlığı..."
                           />
-                        )}
+                          {question.title.trim() && (
+                            <motion.button
+                              onClick={() => handleSentimentAnalyze(question.title)}
+                              disabled={isSentimentAnalyzing}
+                              className="p-2 bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              title="Sentiment Analizi"
+                            >
+                              {isSentimentAnalyzing ? (
+                                <motion.div
+                                  animate={{ rotate: 360 }}
+                                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                >
+                                  <RefreshCw className="w-4 h-4" />
+                                </motion.div>
+                              ) : (
+                                <span className="text-sm">💭</span>
+                              )}
+                            </motion.button>
+                          )}
+                        </div>
+                        
+                                                 {question.type === 'radio' || question.type === 'checkbox' || question.type === 'select' ? (
+                           <div className="space-y-2">
+                             {question.options?.map((option, optionIndex) => (
+                               <div key={optionIndex} className="flex items-center space-x-3">
+                                 <input
+                                   type="text"
+                                   value={option}
+                                   onChange={(e) => {
+                                     const newOptions = [...(question.options || [])];
+                                     newOptions[optionIndex] = e.target.value;
+                                     updateQuestion(question.id, { options: newOptions });
+                                   }}
+                                   className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-blue-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+                                   placeholder={`Seçenek ${optionIndex + 1}`}
+                                 />
+                                 <motion.button
+                                   onClick={() => {
+                                     const newOptions = question.options?.filter((_, i) => i !== optionIndex);
+                                     updateQuestion(question.id, { options: newOptions });
+                                   }}
+                                   className="p-1 hover:bg-white/10 rounded-lg text-red-300 hover:text-red-200 transition-colors"
+                                   whileHover={{ scale: 1.1 }}
+                                   whileTap={{ scale: 0.9 }}
+                                 >
+                                   <Trash2 className="w-4 h-4" />
+                                 </motion.button>
+                               </div>
+                             ))}
+                             <motion.button
+                               onClick={() => {
+                                 const newOptions = [...(question.options || []), `Seçenek ${(question.options?.length || 0) + 1}`];
+                                 updateQuestion(question.id, { options: newOptions });
+                               }}
+                               className="px-3 py-2 bg-white/10 hover:bg-white/20 text-blue-300 hover:text-white rounded-lg transition-all duration-300 flex items-center space-x-2"
+                               whileHover={{ scale: 1.05 }}
+                               whileTap={{ scale: 0.95 }}
+                             >
+                               <Plus className="w-4 h-4" />
+                               <span>Seçenek Ekle</span>
+                             </motion.button>
+                           </div>
+                         ) : question.type === 'rating' ? (
+                           <div className="space-y-2">
+                             <div className="flex items-center space-x-2">
+                               <span className="text-sm text-blue-200">Rating Scale:</span>
+                               <span className="text-sm text-blue-300">
+                                 {question.options?.length || 0} seçenek
+                               </span>
+                             </div>
+                             {question.options && question.options.length > 0 && (
+                               <div className="flex flex-wrap gap-2">
+                                 {question.options.map((option, index) => (
+                                   <span key={index} className="px-2 py-1 bg-white/10 rounded text-xs text-blue-200">
+                                     {option}
+                                   </span>
+                                 ))}
+                               </div>
+                             )}
+                           </div>
+                         ) : (
+                           <input
+                             type="text"
+                             value={question.placeholder || ''}
+                             onChange={(e) => updateQuestion(question.id, { placeholder: e.target.value })}
+                             className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-blue-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+                             placeholder="Placeholder metni..."
+                           />
+                         )}
                         
                         <div className="flex items-center justify-between mt-4">
                           <label className="flex items-center space-x-2">
@@ -689,20 +874,37 @@ const FormBuilder: React.FC = () => {
                               />
                             )}
                             
-                            {(question.type === 'radio' || question.type === 'checkbox') && (
-                              <div className="space-y-2">
-                                {question.options?.map((option, optionIndex) => (
-                                  <label key={optionIndex} className="flex items-center space-x-2">
-                                    <input
-                                      type={question.type}
-                                      disabled
-                                      className="text-blue-500 bg-white/10 border-white/20"
-                                    />
-                                    <span className="text-blue-200">{option}</span>
-                                  </label>
-                                ))}
-                              </div>
-                            )}
+                                                         {(question.type === 'radio' || question.type === 'checkbox') && (
+                               <div className="space-y-2">
+                                 {question.options?.map((option, optionIndex) => (
+                                   <label key={optionIndex} className="flex items-center space-x-2">
+                                     <input
+                                       type={question.type}
+                                       disabled
+                                       className="text-blue-500 bg-white/10 border-white/20"
+                                     />
+                                     <span className="text-blue-200">{option}</span>
+                                   </label>
+                                 ))}
+                               </div>
+                             )}
+                             
+                             {question.type === 'rating' && (
+                               <div className="space-y-2">
+                                 <div className="flex items-center space-x-2">
+                                   {question.options?.map((option, optionIndex) => (
+                                     <label key={optionIndex} className="flex items-center space-x-2">
+                                       <input
+                                         type="radio"
+                                         disabled
+                                         className="text-blue-500 bg-white/10 border-white/20"
+                                       />
+                                       <span className="text-blue-200 text-sm">{option}</span>
+                                     </label>
+                                   ))}
+                                 </div>
+                               </div>
+                             )}
                             
                             {question.type === 'select' && (
                               <select className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white" disabled>
@@ -866,6 +1068,245 @@ const FormBuilder: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* AI Soru Önerileri Modal */}
+      <AnimatePresence>
+        {showAIQuestions && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4 text-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Sparkles className="w-6 h-6" />
+                    <h3 className="text-xl font-bold">AI Soru Önerileri</h3>
+                  </div>
+                  <button
+                    onClick={() => setShowAIQuestions(false)}
+                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                {aiError ? (
+                  <div className="text-center py-8">
+                    <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                    <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Soru Önerisi Hatası</h4>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">{aiError}</p>
+                    <button
+                      onClick={handleAIQuestionSuggestions}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                    >
+                      Tekrar Dene
+                    </button>
+                  </div>
+                ) : aiQuestionSuggestions.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="text-center mb-6">
+                      <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                        AI tarafından önerilen sorular
+                      </h4>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        Beğendiğiniz soruları formunuza ekleyin
+                      </p>
+                    </div>
+                    
+                    <div className="grid gap-4">
+                      {aiQuestionSuggestions.map((suggestion, index) => (
+                        <motion.div
+                          key={index}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <span className="text-sm font-medium px-2 py-1 bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 rounded">
+                                  {suggestion.type === 'multiple_choice' ? 'Çoktan Seçmeli' :
+                                   suggestion.type === 'text' ? 'Metin' :
+                                   suggestion.type === 'rating' ? 'Derecelendirme' :
+                                   suggestion.type === 'yes_no' ? 'Evet/Hayır' :
+                                   suggestion.type === 'dropdown' ? 'Açılır Liste' : 'Metin'}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  Güven: {suggestion.confidence}%
+                                </span>
+                              </div>
+                              
+                              <h5 className="font-medium text-gray-900 dark:text-white mb-2">
+                                {suggestion.question}
+                              </h5>
+                              
+                              {suggestion.options && suggestion.options.length > 0 && (
+                                <div className="mb-2">
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Seçenekler:</p>
+                                  <ul className="text-sm text-gray-700 dark:text-gray-300 ml-4">
+                                    {suggestion.options.map((option, i) => (
+                                      <li key={i} className="list-disc">{option}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                <strong>Gerekçe:</strong> {suggestion.reasoning}
+                              </p>
+                            </div>
+                            
+                            <button
+                              onClick={() => addAIQuestion(suggestion)}
+                              className="ml-4 px-3 py-1 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors"
+                            >
+                              Ekle
+                            </button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Sparkles className="w-16 h-16 text-indigo-600 mx-auto mb-4" />
+                    <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Soru önerileri hazırlanıyor</h4>
+                    <p className="text-gray-600 dark:text-gray-400">AI size en uygun soruları hazırlıyor...</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Sentiment Analizi Modal */}
+      <AnimatePresence>
+        {sentimentModal.show && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-pink-500 to-rose-600 px-6 py-4 text-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-2xl">💭</span>
+                    <h3 className="text-xl font-bold">Sentiment Analizi</h3>
+                  </div>
+                  <button
+                    onClick={() => setSentimentModal({ show: false })}
+                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-6">
+                {sentimentModal.result ? (
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Analiz Edilen Metin</h4>
+                      <p className="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                        "{sentimentModal.text}"
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20 rounded-lg">
+                        <h5 className="font-medium text-gray-900 dark:text-white mb-1">Sentiment</h5>
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            sentimentModal.result.sentiment === 'positive' ? 'bg-green-100 text-green-800' :
+                            sentimentModal.result.sentiment === 'negative' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {sentimentModal.result.sentiment === 'positive' ? '😊 Pozitif' :
+                             sentimentModal.result.sentiment === 'negative' ? '😞 Negatif' :
+                             '😐 Nötr'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg">
+                        <h5 className="font-medium text-gray-900 dark:text-white mb-1">Güven Skoru</h5>
+                        <div className="flex items-center space-x-2">
+                          <div className="flex-1 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                            <div 
+                              className="bg-blue-600 h-2 rounded-full transition-all duration-1000"
+                              style={{ width: `${sentimentModal.result.confidence}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {sentimentModal.result.confidence}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {sentimentModal.result.emotions && Object.keys(sentimentModal.result.emotions).length > 0 && (
+                      <div>
+                        <h5 className="font-medium text-gray-900 dark:text-white mb-3">Duygu Analizi</h5>
+                        <div className="grid grid-cols-2 gap-3">
+                          {Object.entries(sentimentModal.result.emotions).map(([emotion, score]: [string, any]) => (
+                            <div key={emotion} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                              <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">{emotion}</span>
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {(score * 100).toFixed(1)}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                      <h5 className="font-medium text-amber-800 dark:text-amber-200 mb-2">💡 Öneri</h5>
+                      <p className="text-sm text-amber-700 dark:text-amber-300">
+                        {sentimentModal.result.sentiment === 'negative' 
+                          ? 'Bu soru olumsuz bir ton içeriyor. Daha olumlu ve teşvik edici bir dil kullanmayı deneyebilirsiniz.'
+                          : sentimentModal.result.sentiment === 'positive'
+                          ? 'Bu soru olumlu bir ton taşıyor. Katılımcılar için motive edici olacaktır.'
+                          : 'Bu soru nötr bir ton taşıyor. İhtiyaca göre daha samimi veya profesyonel hale getirebilirsiniz.'}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-pink-100 dark:bg-pink-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <span className="text-2xl">💭</span>
+                    </div>
+                    <p className="text-gray-600 dark:text-gray-400">Sentiment analizi yapılıyor...</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Image Upload Modal */}
       <AnimatePresence>

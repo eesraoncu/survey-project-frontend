@@ -1,30 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence, useMotionValue, useTransform, useSpring } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
   FileText, 
-  Search, 
   Plus, 
   Sparkles, 
   TrendingUp, 
   Rocket, 
-  Lightbulb, 
-  Target, 
-  Zap, 
-  Star, 
-  Palette, 
-  Wand2,
+  Lightbulb,
   BarChart3,
   Users,
-  Clock,
-  Eye,
-  Edit,
-  Trash2,
-  Upload,
-  Image as ImageIcon,
   MoreVertical,
-  Settings,
-  Download,
   Calendar,
   Gift,
   Shirt,
@@ -34,15 +20,19 @@ import {
 } from 'lucide-react';
 import { testJiraConnection } from '../services/jiraService';
 import { surveyService, type Survey } from '../services/surveyService';
+import { aiService } from '../services/aiService';
 
 
 
 const Home: React.FC = () => {
-  const [searchQuery, setSearchQuery] = useState('');
   const [hoveredSurvey, setHoveredSurvey] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'templates' | 'ai' | 'trending'>('templates');
   const [particles, setParticles] = useState<Array<{id: number, x: number, y: number, vx: number, vy: number}>>([]);
   const [jiraTestResult, setJiraTestResult] = useState<string>('');
+  const [showAIModal, setShowAIModal] = useState(false);
+  const [aiDescription, setAiDescription] = useState('');
+  const [isAILoading, setIsAILoading] = useState(false);
+  const [aiError, setAiError] = useState<string>('');
   const navigate = useNavigate();
 
   // AI-powered survey suggestions
@@ -144,6 +134,82 @@ const Home: React.FC = () => {
     }
   };
 
+  // AI anket oluşturma fonksiyonu
+  const handleAIGenerate = async () => {
+    console.log('🚀 AI Anket Oluşturma Başladı:', aiDescription);
+    console.log('🔧 AUTH TOKEN:', localStorage.getItem('authToken') ? 'Mevcut' : 'YOK!');
+    console.log('🌐 Current URL:', window.location.href);
+    
+    // Form validasyonu
+    const validation = aiService.validateAIDescription(aiDescription);
+    if (!validation.isValid) {
+      console.log('❌ Validation Failed:', validation.message);
+      setAiError(validation.message || 'Geçersiz açıklama');
+      return;
+    }
+
+    setIsAILoading(true);
+    setAiError('');
+
+    try {
+      console.log('📡 Backend API çağrısı yapılıyor...');
+      const generatedSurvey = await aiService.generateCompleteSurvey(aiDescription);
+      
+      console.log('✅ AI Anket Alındı:', generatedSurvey);
+      console.log('📊 AI Anket Questions Count:', generatedSurvey.questions?.length || 0);
+      console.log('📝 AI Anket Questions:', generatedSurvey.questions);
+      
+      // AI anket verisini localStorage'a kaydet
+      localStorage.setItem('aiGeneratedSurvey', JSON.stringify(generatedSurvey));
+      console.log('💾 LocalStorage\'a kaydedildi');
+      
+      // LocalStorage'da gerçekten kaydedildiğini kontrol et
+      const saved = localStorage.getItem('aiGeneratedSurvey');
+      console.log('🔍 LocalStorage Kontrol:', saved ? 'Veri mevcut' : 'Veri YOK!');
+      if (saved) {
+        console.log('📋 Kaydedilen veri uzunluğu:', saved.length, 'karakter');
+        
+        // Parse edilmiş veriyi kontrol et
+        try {
+          const parsedData = JSON.parse(saved);
+          console.log('🔍 Parsed Data Questions Count:', parsedData.questions?.length || 0);
+          console.log('🔍 Parsed Data Questions:', parsedData.questions);
+        } catch (parseError) {
+          console.error('❌ Parse Error:', parseError);
+        }
+      }
+      
+      // Başarılı olursa form builder sayfasına yönlendir
+      console.log('🔄 FormBuilder\'a yönlendiriliyor...');
+      navigate('/form-builder');
+      
+      // Modal'ı kapat
+      setShowAIModal(false);
+      setAiDescription('');
+      
+    } catch (error: any) {
+      console.error('💥 AI Anket Oluşturma Hatası:', error);
+      const errorMessage = aiService.formatErrorMessage(error);
+      setAiError(errorMessage);
+    } finally {
+      setIsAILoading(false);
+    }
+  };
+
+  // AI modal'ını aç
+  const openAIModal = () => {
+    console.log('🎯 AI Modal açılıyor...');
+    setShowAIModal(true);
+    setAiError('');
+    setAiDescription('');
+    console.log('✅ AI Modal state güncellendi');
+  };
+
+  // showAIModal state'ini izle
+  useEffect(() => {
+    console.log('🔍 showAIModal State Değişimi:', showAIModal);
+  }, [showAIModal]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 relative overflow-hidden">
       {/* Animated Background Particles */}
@@ -243,7 +309,7 @@ const Home: React.FC = () => {
                         className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-2xl font-medium shadow-2xl"
                         whileHover={{ scale: 1.05, y: -2 }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => navigate('/ai-form-builder')}
+                        onClick={openAIModal}
                       >
                         <Rocket className="w-5 h-5 inline mr-2" />
                         AI Destekli Oluştur
@@ -532,6 +598,88 @@ const Home: React.FC = () => {
           </section>
         </motion.div>
       </main>
+
+      {/* AI Modal */}
+      {showAIModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6"
+          >
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-xl flex items-center justify-center">
+                <Rocket className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">AI ile Anket Oluştur</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Anketinizi tanımlayın, AI sizin için oluştursun</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Anket Açıklaması *
+                </label>
+                <textarea
+                  value={aiDescription}
+                  onChange={(e) => {
+                    setAiDescription(e.target.value);
+                    if (aiError) setAiError(''); // Hata mesajını temizle
+                  }}
+                  placeholder="Örnek: Müşteri memnuniyeti için e-ticaret deneyimi anketi. Ürün kalitesi, teslimat hızı ve müşteri hizmetleri hakkında sorular olsun."
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                  rows={4}
+                  disabled={isAILoading}
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  En az 10 karakter, maksimum 500 karakter
+                </p>
+              </div>
+
+              {aiError && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3">
+                  <p className="text-sm text-red-600 dark:text-red-400">{aiError}</p>
+                </div>
+              )}
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowAIModal(false)}
+                  disabled={isAILoading}
+                  className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                >
+                  İptal
+                </button>
+                <button
+                  onClick={handleAIGenerate}
+                  disabled={isAILoading || !aiDescription.trim()}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-xl hover:from-indigo-600 hover:to-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                >
+                  {isAILoading ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      >
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                      </motion.div>
+                      <span>Oluşturuluyor...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      <span>AI ile Oluştur</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

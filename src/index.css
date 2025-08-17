@@ -3,6 +3,23 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --primary-color: #3B82F6;
+    --primary-color-blue: #3B82F6;
+    --primary-color-purple: #8B5CF6;
+    --primary-color-green: #10B981;
+    --primary-color-red: #EF4444;
+    --primary-color-orange: #F97316;
+    --primary-color-pink: #EC4899;
+    
+    /* Sistem renkleri */
+    --system-primary: #3B82F6;
+    --system-primary-hover: #2563EB;
+    --system-primary-focus: #1D4ED8;
+    --system-primary-light: #DBEAFE;
+    --system-primary-dark: #1E40AF;
+  }
+
   body {
     margin: 0;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',

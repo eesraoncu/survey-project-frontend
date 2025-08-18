@@ -15,6 +15,8 @@ import {
   Radio,
   List,
   Star,
+  Heart,
+  ThumbsUp,
   Calendar,
   MapPin,
   Phone,
@@ -30,6 +32,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { surveyService, type FormData as SurveyFormData } from '../services/surveyService';
+import { questionService, type UpsertQuestionRequest } from '../services/questionService';
 import { aiService, type AIQuestionSuggestion } from '../services/aiService';
 
 interface Question {
@@ -40,6 +43,10 @@ interface Question {
   options?: string[];
   placeholder?: string;
   description?: string;
+  // Derecelendirme için
+  maxRating?: number;
+  ratingValue?: number;
+  ratingIcon?: 'star' | 'heart' | 'thumb';
 }
 
 interface FormData {
@@ -282,8 +289,8 @@ const FormBuilder: React.FC = () => {
   };
 
   const questionTypes = [
-    { type: 'text' as const, label: 'Kısa Metin', icon: <Type className="w-5 h-5" />, color: 'bg-blue-500' },
-    { type: 'textarea' as const, label: 'Uzun Metin', icon: <List className="w-5 h-5" />, color: 'bg-green-500' },
+    { type: 'text' as const, label: 'Kısa Yanıt', icon: <Type className="w-5 h-5" />, color: 'bg-blue-500' },
+    { type: 'textarea' as const, label: 'Paragraf', icon: <List className="w-5 h-5" />, color: 'bg-green-500' },
     { type: 'radio' as const, label: 'Çoktan Seçmeli', icon: <Radio className="w-5 h-5" />, color: 'bg-purple-500' },
     { type: 'checkbox' as const, label: 'Çoklu Seçim', icon: <CheckSquare className="w-5 h-5" />, color: 'bg-orange-500' },
     { type: 'select' as const, label: 'Açılır Liste', icon: <ChevronDown className="w-5 h-5" />, color: 'bg-indigo-500' },
@@ -301,9 +308,19 @@ const FormBuilder: React.FC = () => {
       type,
       title: 'Yeni Soru',
       required: false,
-      options: type === 'radio' || type === 'checkbox' || type === 'select' ? ['Seçenek 1', 'Seçenek 2'] : undefined,
+      options:
+        type === 'radio' || type === 'checkbox' || type === 'select'
+          ? ['Seçenek 1', 'Seçenek 2']
+          : type === 'rating'
+          ? ['1', '2', '3', '4', '5']
+          : undefined,
       placeholder: type === 'text' || type === 'textarea' ? 'Lütfen yanıtınızı yazın...' : undefined
     };
+    if (type === 'rating') {
+      newQuestion.maxRating = 5;
+      newQuestion.ratingValue = 0;
+      newQuestion.ratingIcon = 'star';
+    }
 
     setFormData(prev => ({
       ...prev,
@@ -352,14 +369,46 @@ const FormBuilder: React.FC = () => {
         tags: formData.tags
       };
 
-      console.log('📤 Backend\'e gönderilecek veri:', surveyData);
+      console.log('📤 Backend\'e gönderilecek veri (Survey):', surveyData);
 
-      // Backend'e kaydet
+      // 1) Anketi kaydet
       const savedSurvey = await surveyService.createSurvey(surveyData);
-      
-      console.log('✅ Anket başarıyla kaydedildi:', savedSurvey);
-      
-      setSaveMessage({ type: 'success', message: 'Anket başarıyla kaydedildi!' });
+      console.log('✅ Anket kaydı tamamlandı:', savedSurvey);
+
+      // 2) Kaydedilen anket ID'sini tespit et
+      const rawSurveyId: any = (savedSurvey as any)?.id ?? (savedSurvey as any)?.surveyId ?? (savedSurvey as any)?._id;
+      if (!rawSurveyId && formData.questions.length > 0) {
+        throw new Error('Anket ID alınamadı, sorular kaydedilemedi.');
+      }
+      const surveyId: number | string = typeof rawSurveyId === 'string' && /^\d+$/.test(rawSurveyId)
+        ? Number(rawSurveyId)
+        : rawSurveyId;
+
+      // 3) Soruları Questions API'ına yaz
+      if (formData.questions.length > 0) {
+        const payloads: UpsertQuestionRequest[] = formData.questions.map(q => {
+          const titleTrim = (q.title || '').trim()
+          const placeholderTrim = (q.placeholder || '').trim()
+          const questionsText = titleTrim && titleTrim !== 'Yeni Soru' ? titleTrim : placeholderTrim || 'Yeni Soru'
+          return {
+            questionsText,
+            questionType: q.type,
+            choices: q.options || [],
+            surveysId: surveyId,
+          }
+        });
+
+        console.log('📤 Backend\'e gönderilecek veri (Questions):', payloads);
+        await Promise.all(
+          payloads.map(p => questionService.create(p).catch(err => {
+            console.error('❌ Soru kaydedilemedi:', p, err);
+            throw err;
+          }))
+        );
+        console.log('✅ Tüm sorular kaydedildi');
+      }
+
+      setSaveMessage({ type: 'success', message: 'Anket ve sorular başarıyla kaydedildi!' });
       
       // 2 saniye sonra anketler sayfasına yönlendir
       setTimeout(() => {
@@ -786,22 +835,73 @@ const FormBuilder: React.FC = () => {
                              </motion.button>
                            </div>
                          ) : question.type === 'rating' ? (
-                           <div className="space-y-2">
+                           <div className="space-y-3">
+                             {/* Icon selector */}
                              <div className="flex items-center space-x-2">
-                               <span className="text-sm text-blue-200">Rating Scale:</span>
-                               <span className="text-sm text-blue-300">
-                                 {question.options?.length || 0} seçenek
-                               </span>
-                             </div>
-                             {question.options && question.options.length > 0 && (
-                               <div className="flex flex-wrap gap-2">
-                                 {question.options.map((option, index) => (
-                                   <span key={index} className="px-2 py-1 bg-white/10 rounded text-xs text-blue-200">
-                                     {option}
-                                   </span>
-                                 ))}
+                               <span className="text-sm text-blue-200">Sembol:</span>
+                               <div className="flex items-center space-x-2">
+                                 <button
+                                   type="button"
+                                   onClick={() => updateQuestion(question.id, { ratingIcon: 'star' })}
+                                   className={`px-3 py-1 rounded-lg border ${question.ratingIcon === 'star' ? 'bg-white/20 border-white/30 text-yellow-300' : 'bg-white/5 border-white/20 text-blue-200'}`}
+                                 >
+                                   ★
+                                 </button>
+                                 <button
+                                   type="button"
+                                   onClick={() => updateQuestion(question.id, { ratingIcon: 'heart' })}
+                                   className={`px-3 py-1 rounded-lg border ${question.ratingIcon === 'heart' ? 'bg-white/20 border-white/30 text-rose-400' : 'bg-white/5 border-white/20 text-blue-200'}`}
+                                 >
+                                   ❤
+                                 </button>
+                                 <button
+                                   type="button"
+                                   onClick={() => updateQuestion(question.id, { ratingIcon: 'thumb' })}
+                                   className={`px-3 py-1 rounded-lg border ${question.ratingIcon === 'thumb' ? 'bg-white/20 border-white/30 text-amber-400' : 'bg-white/5 border-white/20 text-blue-200'}`}
+                                 >
+                                   👍
+                                 </button>
                                </div>
-                             )}
+                             </div>
+
+                             {/* Stars/hearts/thumbs */}
+                             <div className="flex items-center space-x-4 select-none">
+                               {Array.from({ length: question.maxRating || 5 }).map((_, i) => {
+                                 const idx = i + 1;
+                                 const isActive = (question.ratingValue || 0) >= idx;
+                                 const base = 'text-2xl transition-colors';
+                                 let char = '★';
+                                 let activeColor = 'text-yellow-400';
+                                 if (question.ratingIcon === 'heart') {
+                                   char = '❤';
+                                   activeColor = 'text-rose-400';
+                                 } else if (question.ratingIcon === 'thumb') {
+                                   char = '';
+                                   activeColor = 'text-blue-400';
+                                 }
+                                 const display = question.ratingIcon === 'star' ? (isActive ? '★' : '☆') : char;
+                                 return (
+                                   <button
+                                     type="button"
+                                     key={idx}
+                                     onClick={() => {
+                                       const current = question.ratingValue || 0;
+                                       const newValue = current === idx ? Math.max(0, idx - 1) : idx;
+                                       updateQuestion(question.id, { ratingValue: newValue });
+                                     }}
+                                     className="focus:outline-none"
+                                     aria-label={`Derece ${idx}`}
+                                   >
+                                     {question.ratingIcon === 'thumb' ? (
+                                       <ThumbsUp className={`w-6 h-6 ${isActive ? 'text-amber-400' : 'text-blue-300'}`} />
+                                     ) : (
+                                       <span className={`${base} ${isActive ? activeColor : 'text-blue-300'}`}>{display}</span>
+                                     )}
+                                   </button>
+                                 );
+                               })}
+                             </div>
+                             <div className="text-sm text-blue-300">Seçilen: {question.ratingValue || 0}/{question.maxRating || 5}</div>
                            </div>
                          ) : (
                            <input

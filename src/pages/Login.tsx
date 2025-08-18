@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Mail, 
   Lock, 
@@ -68,6 +68,8 @@ const Login: React.FC = () => {
   const [addressLoading, setAddressLoading] = useState({ cities: false, districts: false, townships: false, neighbourhoods: false });
   
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as any)?.from?.pathname || '/home';
   const { theme, toggleTheme } = useTheme();
   const { login, register, loginWithGoogle } = useAuth();
 
@@ -115,7 +117,7 @@ const Login: React.FC = () => {
       const success = await login(email.trim(), password);
       
       if (success) {
-        navigate('/home');
+        navigate(from, { replace: true });
       } else {
         alert('Giriş başarısız! E-posta veya şifre hatalı.');
       }

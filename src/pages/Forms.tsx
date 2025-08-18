@@ -465,6 +465,7 @@ const Forms: React.FC = () => {
                   transition={{ type: "spring", stiffness: 300, duration: 0.5, delay: index * 0.1 }}
                   onMouseEnter={() => setHoveredSurvey(survey.id.toString())}
                   onMouseLeave={() => setHoveredSurvey(null)}
+                  onClick={() => navigate(`/forms/${survey.id}`)}
                 >
                   <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-xl hover:shadow-2xl border border-white/20 overflow-hidden relative">
                     {/* Background Image or Placeholder */}
@@ -718,6 +719,7 @@ const Forms: React.FC = () => {
                               )}
                             </motion.button>
                             <motion.button 
+                              onClick={() => navigate(`/forms/${survey.id}`)}
                               className="text-purple-400 hover:text-purple-200 transition-colors"
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}

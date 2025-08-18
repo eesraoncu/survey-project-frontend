@@ -166,7 +166,7 @@ export const surveyService = {
   // Anket istatistiklerini getir
   async getSurveyStats(id: string): Promise<SurveyStats> {
     try {
-      const response = await apiClient.get<SurveyStats>(`/Survey/stats/${id}`);
+      const response = await apiClient.get<SurveyStats>(`/Surveys/stats/${id}`);
       return response.data;
     } catch (error: any) {
       console.error('Error fetching survey stats:', error);

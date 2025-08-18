@@ -32,12 +32,13 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Sayfa yüklendiğinde kullanıcı durumunu kontrol et
   useEffect(() => {
     const checkAuthStatus = () => {
       try {
+        setIsLoading(true);
         const currentUser = authService.getCurrentUser();
         const isAuth = authService.isAuthenticated();
         
@@ -49,6 +50,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } catch (error) {
         console.error('Auth check error:', error);
         setUser(null);
+      } finally {
+        setIsLoading(false);
       }
     };
 

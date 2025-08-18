@@ -96,9 +96,7 @@ export const authService = {
   // Login fonksiyonu
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     try {
-      console.log('Login attempt with:', credentials);
       const response = await apiClient.post<LoginResponse>('/Auth/login', credentials);
-      console.log('Login response:', response.data);
       
       if (response.data.success) {
         // Token'ı localStorage'a kaydet
@@ -108,8 +106,10 @@ export const authService = {
       
       return response.data;
     } catch (error: any) {
-      console.error('Login error details:', error);
-      console.error('Error response:', error.response?.data);
+      // Hata detaylarını hassas veri olmadan logla
+      const status = error?.response?.status;
+      const message = error?.response?.data?.message || error?.message;
+      console.error('Login error:', { status, message });
       throw new Error(error.response?.data?.message || 'Giriş yapılırken bir hata oluştu');
     }
   },

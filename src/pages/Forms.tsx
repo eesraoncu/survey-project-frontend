@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { surveyService, type Survey } from '../services/surveyService';
 import { aiService, type AISurveyAnalysis } from '../services/aiService';
+import { useAuth } from '../contexts/AuthContext';
 
 
 
@@ -58,6 +59,7 @@ const Forms: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hoveredSurvey, setHoveredSurvey] = useState<string | null>(null);
+  const { user } = useAuth();
 
   // Backend'den anketleri yükle
   useEffect(() => {
@@ -69,9 +71,34 @@ const Forms: React.FC = () => {
       console.log('🔄 Anketler yükleniyor...');
       setIsLoading(true);
       setError(null);
-      const surveysData = await surveyService.getAllSurveys();
-      console.log('📊 Yüklenen anketler:', surveysData);
-      setSurveys(surveysData);
+      const surveysData = user?.id
+        ? await surveyService.getSurveysByUserFlexible(user.id)
+        : await surveyService.getAllSurveys();
+      console.log('📊 Yüklenen anket sayısı:', surveysData.length);
+      if (surveysData && surveysData.length) {
+        console.table(
+          surveysData.slice(0, 10).map((s: any) => ({
+            id: s.id ?? s._id,
+            users_id: s.users_id,
+            usersId: s.usersId,
+            userId: s.userId,
+            user_id: s.user_id,
+            createdBy: s.createdBy,
+            ownerId: s.ownerId,
+            userObjId: s.user?.id,
+          }))
+        );
+      }
+      // Ek güvenlik: client-side sahiplik filtresi uygula
+      const myId = user?.id ? String(user.id) : ''
+      const owned = surveysData.filter((s: any, idx: number) => {
+        const owner = s.UsersId ?? s.usersId ?? s.users_id ?? s.userId ?? s.user_id ?? s.createdBy ?? s.ownerId ?? s.user?.id
+        const ok = owner != null && String(owner) === myId
+        if (idx < 10) console.log('[Forms][final-filter] item', idx, 'owner:', owner, 'match:', ok)
+        return ok
+      })
+      console.log('📊 (Forms) Nihai sahip filtre sayısı:', owned.length)
+      setSurveys(owned)
     } catch (err: any) {
       console.error('❌ Anketler yüklenirken hata:', err);
       setError(err.message || 'Anketler yüklenirken bir hata oluştu');

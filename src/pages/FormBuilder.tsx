@@ -32,6 +32,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { surveyService, type FormData as SurveyFormData } from '../services/surveyService';
+import { useAuth } from '../contexts/AuthContext';
 import { questionService, type UpsertQuestionRequest } from '../services/questionService';
 import { aiService, type AIQuestionSuggestion } from '../services/aiService';
 
@@ -67,6 +68,7 @@ interface FormData {
 
 const FormBuilder: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [formData, setFormData] = useState<FormData>({
     title: '',
     description: '',
@@ -306,15 +308,17 @@ const FormBuilder: React.FC = () => {
     const newQuestion: Question = {
       id: Date.now().toString(),
       type,
-      title: 'Yeni Soru',
+      title: '',
       required: false,
       options:
         type === 'radio' || type === 'checkbox' || type === 'select'
-          ? ['Seçenek 1', 'Seçenek 2']
+          ? ['', '']
           : type === 'rating'
           ? ['1', '2', '3', '4', '5']
           : undefined,
-      placeholder: type === 'text' || type === 'textarea' ? 'Lütfen yanıtınızı yazın...' : undefined
+      // Kısa yanıt ve paragraf için varsayılan placeholder'ı boş bırakıyoruz,
+      // böylece input'ta saydam placeholder davranışı olur
+      placeholder: type === 'text' || type === 'textarea' ? '' : undefined
     };
     if (type === 'rating') {
       newQuestion.maxRating = 5;
@@ -352,6 +356,8 @@ const FormBuilder: React.FC = () => {
         surveyDescription: formData.description,
         surveyTypeId: 1, // Varsayılan tip ID
         isActive: formData.status === 'active',
+        // Backend UsersId bekliyor; sayısal gönderelim
+        usersId: user?.id != null ? Number(user.id) : undefined,
         backgroundImage: formData.backgroundImage,
         // Questions'ları backend formatına dönüştür
         questions: formData.questions.map(q => ({
@@ -374,6 +380,16 @@ const FormBuilder: React.FC = () => {
       // 1) Anketi kaydet
       const savedSurvey = await surveyService.createSurvey(surveyData);
       console.log('✅ Anket kaydı tamamlandı:', savedSurvey);
+      console.log('✅ Kayıt edilen anket sahiplik alanları:', {
+        id: (savedSurvey as any).id ?? (savedSurvey as any)._id,
+        users_id: (savedSurvey as any).users_id,
+        usersId: (savedSurvey as any).usersId,
+        userId: (savedSurvey as any).userId,
+        user_id: (savedSurvey as any).user_id,
+        createdBy: (savedSurvey as any).createdBy,
+        ownerId: (savedSurvey as any).ownerId,
+        userObjId: (savedSurvey as any).user?.id,
+      });
 
       // 2) Kaydedilen anket ID'sini tespit et
       const rawSurveyId: any = (savedSurvey as any)?.id ?? (savedSurvey as any)?.surveyId ?? (savedSurvey as any)?._id;
@@ -383,13 +399,14 @@ const FormBuilder: React.FC = () => {
       const surveyId: number | string = typeof rawSurveyId === 'string' && /^\d+$/.test(rawSurveyId)
         ? Number(rawSurveyId)
         : rawSurveyId;
+      console.log('➡️ Sorular için kullanılacak surveyId:', surveyId);
 
       // 3) Soruları Questions API'ına yaz
       if (formData.questions.length > 0) {
         const payloads: UpsertQuestionRequest[] = formData.questions.map(q => {
           const titleTrim = (q.title || '').trim()
           const placeholderTrim = (q.placeholder || '').trim()
-          const questionsText = titleTrim && titleTrim !== 'Yeni Soru' ? titleTrim : placeholderTrim || 'Yeni Soru'
+          const questionsText = titleTrim ? titleTrim : (placeholderTrim || 'Yeni Soru')
           return {
             questionsText,
             questionType: q.type,
@@ -768,7 +785,7 @@ const FormBuilder: React.FC = () => {
                             value={question.title}
                             onChange={(e) => updateQuestion(question.id, { title: e.target.value })}
                             className="flex-1 text-lg font-semibold bg-transparent border-none outline-none text-white"
-                            placeholder="Soru başlığı..."
+                            placeholder="Yeni Soru"
                           />
                           {question.title.trim() && (
                             <motion.button
@@ -823,7 +840,7 @@ const FormBuilder: React.FC = () => {
                              ))}
                              <motion.button
                                onClick={() => {
-                                 const newOptions = [...(question.options || []), `Seçenek ${(question.options?.length || 0) + 1}`];
+                                 const newOptions = [...(question.options || []), ''];
                                  updateQuestion(question.id, { options: newOptions });
                                }}
                                className="px-3 py-2 bg-white/10 hover:bg-white/20 text-blue-300 hover:text-white rounded-lg transition-all duration-300 flex items-center space-x-2"
@@ -903,15 +920,36 @@ const FormBuilder: React.FC = () => {
                              </div>
                              <div className="text-sm text-blue-300">Seçilen: {question.ratingValue || 0}/{question.maxRating || 5}</div>
                            </div>
-                         ) : (
-                           <input
-                             type="text"
-                             value={question.placeholder || ''}
-                             onChange={(e) => updateQuestion(question.id, { placeholder: e.target.value })}
-                             className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-blue-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent"
-                             placeholder="Placeholder metni..."
-                           />
-                         )}
+                         ) : question.type === 'date' ? (
+                           <div className="space-y-2">
+                             <div className="text-sm text-blue-200">Tarih Şablonu</div>
+                            <input
+                              type="text"
+                              placeholder="gg.aa.yyyy"
+                              onFocus={(e) => {
+                                e.currentTarget.type = 'date';
+                                // Chrome/Edge destekliyorsa picker'ı aç
+                                // @ts-ignore
+                                if (e.currentTarget.showPicker) e.currentTarget.showPicker();
+                              }}
+                              onBlur={(e) => {
+                                if (!e.currentTarget.value) {
+                                  e.currentTarget.type = 'text';
+                                }
+                              }}
+                              className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-blue-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+                            />
+                             <div className="text-sm text-blue-300">Format: YYYY-MM-DD</div>
+                           </div>
+                          ) : (
+                            <input
+                              type="text"
+                              value={question.placeholder || ''}
+                              onChange={(e) => updateQuestion(question.id, { placeholder: e.target.value })}
+                              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-blue-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+                              placeholder="Placeholder metni..."
+                            />
+                          )}
                         
                         <div className="flex items-center justify-between mt-4">
                           <label className="flex items-center space-x-2">
@@ -1013,6 +1051,11 @@ const FormBuilder: React.FC = () => {
                                   <option key={optionIndex} value={option}>{option}</option>
                                 ))}
                               </select>
+                            )}
+                            {question.type === 'date' && (
+                              <div>
+                                <input type="date" className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white" disabled />
+                              </div>
                             )}
                           </div>
                         ))}

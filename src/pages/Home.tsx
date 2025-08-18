@@ -18,17 +18,16 @@ import {
   Grid3X3,
   ChevronDown
 } from 'lucide-react';
-import { testJiraConnection } from '../services/jiraService';
+import { useAuth } from '../contexts/AuthContext';
 import { surveyService, type Survey } from '../services/surveyService';
 import { aiService } from '../services/aiService';
 
 
 
 const Home: React.FC = () => {
-  const [hoveredSurvey, setHoveredSurvey] = useState<string | null>(null);
+  const [hoveredSurvey, setHoveredSurvey] = useState<string | null>(null); // gelecekte kart hover efektleri için tutuluyor
   const [activeTab, setActiveTab] = useState<'templates' | 'ai' | 'trending'>('templates');
   const [particles, setParticles] = useState<Array<{id: number, x: number, y: number, vx: number, vy: number}>>([]);
-  const [jiraTestResult, setJiraTestResult] = useState<string>('');
   const [showAIModal, setShowAIModal] = useState(false);
   const [aiDescription, setAiDescription] = useState('');
   const [isAILoading, setIsAILoading] = useState(false);
@@ -58,19 +57,57 @@ const Home: React.FC = () => {
   ];
 
   const [recentSurveys, setRecentSurveys] = useState<Survey[]>([]);
+  const { user } = useAuth();
 
   // Son anketleri yükle
   useEffect(() => {
     const loadRecentSurveys = async () => {
       try {
-        const surveys = await surveyService.getAllSurveys();
-        setRecentSurveys(surveys.slice(0, 2)); // İlk 2 anketi al
+        console.log('[Home] Aktif kullanıcı:', user?.id);
+        const surveys = user?.id
+          ? await surveyService.getSurveysByUserFlexible(user.id)
+          : await surveyService.getAllSurveys();
+        console.log('[Home] getAllSurveys count =', surveys.length);
+        if (surveys && surveys.length) {
+          console.log('[Home] İlk 5 kayıt örnek alanları (id, users_id, usersId, userId, user_id, createdBy, ownerId):');
+          console.table(
+            surveys.slice(0, 5).map((s: any) => ({
+              id: s.id ?? s._id,
+              users_id: s.users_id,
+              usersId: s.usersId,
+              userId: s.userId,
+              user_id: s.user_id,
+              createdBy: s.createdBy,
+              ownerId: s.ownerId,
+              userObjId: s.user?.id
+            }))
+          );
+        }
+        // Giriş yapmış kullanıcıya ait olanları filtrele (backend tümünü dönerse)
+        // Ek güvenlik: client-side sahiplik filtresi uygula
+        const myId = user?.id ? String(user.id) : ''
+        const owned = surveys.filter((s: any, idx: number) => {
+          const owner = s.UsersId ?? s.usersId ?? s.users_id ?? s.userId ?? s.user_id ?? s.createdBy ?? s.ownerId ?? s.user?.id
+          const ok = owner != null && String(owner) === myId
+          if (idx < 10) console.log('[Home][final-filter] item', idx, 'owner:', owner, 'match:', ok)
+          return ok
+        })
+        console.log('[Home] (User filtered) count =', owned.length)
+        // En son oluşturulan 4 anketi sırala ve al
+        const sorted = owned.sort((a: any, b: any) => {
+          const da = new Date((a as any).createdAt || (a as any).created_at || 0).getTime();
+          const db = new Date((b as any).createdAt || (b as any).created_at || 0).getTime();
+          return db - da;
+        });
+        const last4 = sorted.slice(0, 4);
+        console.log('[Home] last4 ids =', last4.map((s: any) => s.id ?? s._id));
+        setRecentSurveys(last4);
       } catch (error) {
         console.error('Error loading recent surveys:', error);
       }
     };
     loadRecentSurveys();
-  }, []);
+  }, [user]);
 
   // Particle system for background
   useEffect(() => {
@@ -117,22 +154,7 @@ const Home: React.FC = () => {
     }
   };
 
-  // Jira code test function
-  const handleJiraTest = async () => {
-    try {
-      setJiraTestResult('Test ediliyor...');
-      // Gerçek Jira token'ını kullan
-      const token = import.meta.env.VITE_JIRA_TOKEN;
-      if (!token) {
-        setJiraTestResult('Hata: Jira token bulunamadı!');
-        return;
-      }
-      const result = await testJiraConnection(token);
-      setJiraTestResult(`Başarılı! ${result.message}`);
-    } catch (error) {
-      setJiraTestResult(`Hata: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`);
-    }
-  };
+  // Jira token testi kaldırıldı
 
   // AI anket oluşturma fonksiyonu
   const handleAIGenerate = async () => {
@@ -314,14 +336,7 @@ const Home: React.FC = () => {
                         <Rocket className="w-5 h-5 inline mr-2" />
                         AI Destekli Oluştur
                       </motion.button>
-                      <motion.button
-                        className="px-6 py-3 bg-gradient-to-r from-blue-500 to-sky-600 text-white rounded-2xl font-medium shadow-2xl"
-                        whileHover={{ scale: 1.05, y: -2 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={handleJiraTest}
-                      >
-                        Jira Token Test
-                      </motion.button>
+                      {/* Jira Token Test butonu kaldırıldı */}
                     </div>
                   </div>
                   
@@ -407,13 +422,7 @@ const Home: React.FC = () => {
                     </div>
                   </div>
                   
-                  {/* Jira Test Result */}
-                  {jiraTestResult && (
-                    <div className="mt-6 p-4 bg-white/10 backdrop-blur-xl rounded-xl border border-white/20">
-                      <h4 className="text-lg font-semibold text-white mb-2">Jira Test Sonucu:</h4>
-                      <p className="text-blue-200">{jiraTestResult}</p>
-                    </div>
-                  )}
+                  {/* Jira test sonucu alanı kaldırıldı */}
                 </section>
               </motion.div>
             )}
@@ -527,7 +536,7 @@ const Home: React.FC = () => {
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               {recentSurveys.map((survey, index) => (
                 <motion.div
                   key={survey.id}

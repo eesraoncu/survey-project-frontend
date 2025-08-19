@@ -13,9 +13,12 @@ export interface QuestionApiModel {
 // Create/Update istekleri için model
 export interface UpsertQuestionRequest {
 	questionsText: string
-	questionType: string
+	questionType?: string // Eski format için geriye uyumlu
+	questionTypeId: number // YENİ: Backend'in beklediği ID
 	choices: string[]
 	surveysId: number | string
+	isRequired?: boolean
+	order?: number
 }
 
 export const questionService = {

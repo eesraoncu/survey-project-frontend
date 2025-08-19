@@ -43,6 +43,35 @@ export interface FormData {
   // Sahiplik alanları (backend uyumluluğu için farklı adlar)
   usersId?: number | string;
   users_id?: number | string;
+  
+  // YENİ: Anket özellikleri (Backend'den gelen)
+  allowsAnonymousResponses?: boolean;
+  requiresLogin?: boolean;
+  maxResponses?: number | null;
+  expiresAt?: string | null;
+  allowsEditing?: boolean;
+  showsResults?: boolean;
+  
+  // YENİ: 6 özellik aktivasyonu
+  enablesRating?: boolean;
+  ratingScaleMax?: number;
+  ratingScaleMin?: number;
+  
+  enablesDateFields?: boolean;
+  dateFormat?: string;
+  
+  enablesLocation?: boolean;
+  locationPrecision?: string;
+  
+  enablesPhone?: boolean;
+  phoneFormat?: string;
+  
+  enablesEmail?: boolean;
+  emailVerification?: boolean;
+  
+  enablesFullName?: boolean;
+  nameFormat?: string;
+  
   // Frontend için ek alanlar
   backgroundImage?: string;
   questions?: Question[];

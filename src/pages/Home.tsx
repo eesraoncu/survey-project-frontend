@@ -7,7 +7,6 @@ import {
   Sparkles, 
   TrendingUp, 
   Rocket, 
-  Lightbulb,
   BarChart3,
   Users,
   MoreVertical,
@@ -15,8 +14,7 @@ import {
   Gift,
   Shirt,
   Building,
-  Grid3X3,
-  ChevronDown
+  Grid3X3
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { surveyService, type Survey } from '../services/surveyService';
@@ -25,8 +23,8 @@ import { aiService } from '../services/aiService';
 
 
 const Home: React.FC = () => {
-  const [hoveredSurvey, setHoveredSurvey] = useState<string | null>(null); // gelecekte kart hover efektleri için tutuluyor
-  const [activeTab, setActiveTab] = useState<'templates' | 'ai' | 'trending'>('templates');
+  const [, setHoveredSurvey] = useState<string | null>(null); // gelecekte kart hover efektleri için tutuluyor
+  const [activeTab, setActiveTab] = useState<'templates' | 'trending'>('templates');
   const [particles, setParticles] = useState<Array<{id: number, x: number, y: number, vx: number, vy: number}>>([]);
   const [showAIModal, setShowAIModal] = useState(false);
   const [aiDescription, setAiDescription] = useState('');
@@ -34,12 +32,263 @@ const Home: React.FC = () => {
   const [aiError, setAiError] = useState<string>('');
   const navigate = useNavigate();
 
-  // AI-powered survey suggestions
-  const aiSuggestions = [
-    { title: 'AI Önerisi: Müşteri Deneyimi', confidence: 94, reason: 'Son 30 günde benzer anketler %40 daha fazla yanıt aldı' },
-    { title: 'AI Önerisi: Çalışan Memnuniyeti', confidence: 87, reason: 'Şirket büyüme döneminde, çalışan geri bildirimi kritik' },
-    { title: 'AI Önerisi: Ürün Lansmanı', confidence: 92, reason: 'Pazar araştırması için en uygun zaman' }
-  ];
+  // Şablon template verileri
+  const getTemplateFormData = (templateId: string) => {
+    const templateConfigs: { [key: string]: any } = {
+      contact: {
+        title: 'İletişim Bilgileri Formu',
+        description: 'Müşteri iletişim bilgilerini toplamak için kullanılan profesyonel form',
+        category: 'İş',
+        questions: [
+          {
+            id: Date.now().toString(),
+            type: 'name',
+            title: 'Ad Soyad',
+            required: true,
+            placeholder: 'Adınızı ve soyadınızı yazın'
+          },
+          {
+            id: (Date.now() + 1).toString(),
+            type: 'email',
+            title: 'E-posta Adresi',
+            required: true,
+            placeholder: 'ornek@email.com'
+          },
+          {
+            id: (Date.now() + 2).toString(),
+            type: 'phone',
+            title: 'Telefon Numarası',
+            required: false,
+            placeholder: '+90 5XX XXX XX XX'
+          },
+          {
+            id: (Date.now() + 3).toString(),
+            type: 'textarea',
+            title: 'Mesajınız',
+            required: false,
+            placeholder: 'Lütfen mesajınızı buraya yazın...'
+          }
+        ]
+      },
+      event: {
+        title: 'Etkinlik Katılım Onay Formu',
+        description: 'Etkinliğimize katılım durumunuzu belirtmek için formu doldurun',
+        category: 'Etkinlik',
+        questions: [
+          {
+            id: Date.now().toString(),
+            type: 'name',
+            title: 'Ad Soyad',
+            required: true,
+            placeholder: 'Adınızı ve soyadınızı yazın'
+          },
+          {
+            id: (Date.now() + 1).toString(),
+            type: 'email',
+            title: 'E-posta Adresi',
+            required: true,
+            placeholder: 'ornek@email.com'
+          },
+          {
+            id: (Date.now() + 2).toString(),
+            type: 'radio',
+            title: 'Katılım Durumunuz',
+            required: true,
+            options: ['Kesinlikle Katılacağım', 'Muhtemelen Katılacağım', 'Kararsızım', 'Katılmayacağım']
+          },
+          {
+            id: (Date.now() + 3).toString(),
+            type: 'select',
+            title: 'Kaç Kişi Katılacaksınız?',
+            required: true,
+            options: ['1 Kişi', '2 Kişi', '3 Kişi', '4 Kişi', '5+ Kişi']
+          },
+          {
+            id: (Date.now() + 4).toString(),
+            type: 'checkbox',
+            title: 'Diyet Kısıtlarınız',
+            required: false,
+            options: ['Vejetaryen', 'Vegan', 'Glutensiz', 'Laktozsuz', 'Yok']
+          },
+          {
+            id: (Date.now() + 5).toString(),
+            type: 'textarea',
+            title: 'Özel İstekleriniz',
+            required: false,
+            placeholder: 'Varsa özel isteklerinizi belirtin...'
+          }
+        ]
+      },
+      party: {
+        title: 'Parti Davetiyesi Formu',
+        description: 'Doğum günü partimize katılım durumunuzu bildirin',
+        category: 'Sosyal',
+        questions: [
+          {
+            id: Date.now().toString(),
+            type: 'name',
+            title: 'Ad Soyad',
+            required: true,
+            placeholder: 'Adınızı ve soyadınızı yazın'
+          },
+          {
+            id: (Date.now() + 1).toString(),
+            type: 'radio',
+            title: 'Katılım Durumunuz',
+            required: true,
+            options: ['Evet, katılacağım! 🎉', 'Maalesef katılamayacağım 😢', 'Henüz kararsızım 🤔']
+          },
+          {
+            id: (Date.now() + 2).toString(),
+            type: 'select',
+            title: 'Yanınızda Kimse Getirmeyi Düşünüyor musunuz?',
+            required: false,
+            options: ['Yalnız geleceğim', '+1 kişi getireceğim', '+2 kişi getireceğim', 'Daha fazla']
+          },
+          {
+            id: (Date.now() + 3).toString(),
+            type: 'checkbox',
+            title: 'Hangi Aktiviteleri Tercih Edersiniz?',
+            required: false,
+            options: ['Dans 💃', 'Karaoke 🎤', 'Oyunlar 🎲', 'Fotoğraf Çekimi 📸', 'Sohbet 💬']
+          },
+          {
+            id: (Date.now() + 4).toString(),
+            type: 'text',
+            title: 'Müzik İsteğiniz',
+            required: false,
+            placeholder: 'Çalınmasını istediğiniz şarkı/sanatçı'
+          },
+          {
+            id: (Date.now() + 5).toString(),
+            type: 'textarea',
+            title: 'Hediye Önerisi/Dilek',
+            required: false,
+            placeholder: 'Hediye önerileriniz veya dilekleriniz...'
+          }
+        ]
+      },
+      tshirt: {
+        title: 'Tişört Sipariş Formu',
+        description: 'Şirket tişörtü siparişinizi vermek için formu doldurun',
+        category: 'Sipariş',
+        questions: [
+          {
+            id: Date.now().toString(),
+            type: 'name',
+            title: 'Ad Soyad',
+            required: true,
+            placeholder: 'Adınızı ve soyadınızı yazın'
+          },
+          {
+            id: (Date.now() + 1).toString(),
+            type: 'email',
+            title: 'E-posta Adresi',
+            required: true,
+            placeholder: 'ornek@email.com'
+          },
+          {
+            id: (Date.now() + 2).toString(),
+            type: 'radio',
+            title: 'Tişört Bedeni',
+            required: true,
+            options: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL']
+          },
+          {
+            id: (Date.now() + 3).toString(),
+            type: 'checkbox',
+            title: 'Renk Tercihleri',
+            required: true,
+            options: ['Siyah', 'Beyaz', 'Lacivert', 'Gri', 'Kırmızı', 'Mavi']
+          },
+          {
+            id: (Date.now() + 4).toString(),
+            type: 'select',
+            title: 'Kaç Adet İstiyorsunuz?',
+            required: true,
+            options: ['1 Adet', '2 Adet', '3 Adet', '4 Adet', '5+ Adet']
+          },
+          {
+            id: (Date.now() + 5).toString(),
+            type: 'textarea',
+            title: 'Tasarım Önerileri',
+            required: false,
+            placeholder: 'Tişört tasarımı hakkında önerileriniz...'
+          }
+        ]
+      },
+      registration: {
+        title: 'Etkinlik Kayıt Formu',
+        description: 'Seminer/Konferansa katılmak için kayıt formu',
+        category: 'Eğitim',
+        questions: [
+          {
+            id: Date.now().toString(),
+            type: 'name',
+            title: 'Ad Soyad',
+            required: true,
+            placeholder: 'Adınızı ve soyadınızı yazın'
+          },
+          {
+            id: (Date.now() + 1).toString(),
+            type: 'email',
+            title: 'E-posta Adresi',
+            required: true,
+            placeholder: 'ornek@email.com'
+          },
+          {
+            id: (Date.now() + 2).toString(),
+            type: 'phone',
+            title: 'Telefon Numarası',
+            required: true,
+            placeholder: '+90 5XX XXX XX XX'
+          },
+          {
+            id: (Date.now() + 3).toString(),
+            type: 'text',
+            title: 'Şirket/Kurum Adı',
+            required: false,
+            placeholder: 'Çalıştığınız şirket/kurum'
+          },
+          {
+            id: (Date.now() + 4).toString(),
+            type: 'text',
+            title: 'Ünvan/Pozisyon',
+            required: false,
+            placeholder: 'İş ünvanınız'
+          },
+          {
+            id: (Date.now() + 5).toString(),
+            type: 'checkbox',
+            title: 'Katılmak İstediğiniz Oturumlar',
+            required: true,
+            options: ['Açılış Konuşması', 'Teknik Sunum', 'Panel Tartışması', 'Workshop', 'Networking']
+          },
+          {
+            id: (Date.now() + 6).toString(),
+            type: 'radio',
+            title: 'Sertifika İstiyor musunuz?',
+            required: false,
+            options: ['Evet, sertifika istiyorum', 'Hayır, gerek yok']
+          }
+        ]
+      }
+    };
+    return templateConfigs[templateId];
+  };
+
+  // Şablon tıklama fonksiyonu
+  const handleTemplateClick = (templateId: string) => {
+    const templateData = getTemplateFormData(templateId);
+    if (templateData) {
+      // Template verilerini localStorage'a kaydet
+      localStorage.setItem('templateFormData', JSON.stringify(templateData));
+      // FormBuilder'a yönlendir
+      navigate('/form-builder?template=' + templateId);
+    }
+  };
+
+
 
   // Trending surveys
   const trendingSurveys = [
@@ -49,11 +298,61 @@ const Home: React.FC = () => {
   ];
 
   const templates = [
-    { id: 'contact', title: 'İletişim Bilgileri', icon: <FileText className="w-6 h-6" />, color: 'from-green-400 to-emerald-500', difficulty: 'Kolay', time: '2 dk' },
-    { id: 'event', title: 'Etkinlik LCV Formu', icon: <Calendar className="w-6 h-6" />, color: 'from-blue-400 to-cyan-500', difficulty: 'Orta', time: '5 dk' },
-    { id: 'party', title: 'Parti Davetiyesi', icon: <Gift className="w-6 h-6" />, color: 'from-purple-400 to-pink-500', difficulty: 'Kolay', time: '3 dk' },
-    { id: 'tshirt', title: 'Tişört İstek Formu', icon: <Shirt className="w-6 h-6" />, color: 'from-orange-400 to-red-500', difficulty: 'Kolay', time: '2 dk' },
-    { id: 'registration', title: 'Etkinlik Kayıt Formu', icon: <Building className="w-6 h-6" />, color: 'from-indigo-400 to-purple-500', difficulty: 'Orta', time: '4 dk' }
+    { 
+      id: 'contact', 
+      title: 'İletişim Bilgileri', 
+      description: 'Müşteri iletişim bilgilerini toplamak için profesyonel form',
+      icon: <FileText className="w-6 h-6" />, 
+      color: 'from-green-400 to-emerald-500', 
+      difficulty: 'Kolay', 
+      time: '2 dk',
+      features: ['Ad Soyad', 'E-posta', 'Telefon', 'Mesaj'],
+      popular: true
+    },
+    { 
+      id: 'event', 
+      title: 'Etkinlik LCV Formu', 
+      description: 'Etkinlik katılım onayı ve misafir bilgileri toplama',
+      icon: <Calendar className="w-6 h-6" />, 
+      color: 'from-blue-400 to-cyan-500', 
+      difficulty: 'Orta', 
+      time: '5 dk',
+      features: ['RSVP Onayı', 'Misafir Sayısı', 'Diyet Kısıtları', 'Özel İstekler'],
+      popular: false
+    },
+    { 
+      id: 'party', 
+      title: 'Parti Davetiyesi', 
+      description: 'Doğum günü ve özel kutlamalar için daveti formu',
+      icon: <Gift className="w-6 h-6" />, 
+      color: 'from-purple-400 to-pink-500', 
+      difficulty: 'Kolay', 
+      time: '3 dk',
+      features: ['Katılım Durumu', 'Hediye Tercihi', 'Müzik İsteği', 'Yanındaki Kişi'],
+      popular: true
+    },
+    { 
+      id: 'tshirt', 
+      title: 'Tişört İstek Formu', 
+      description: 'Şirket veya etkinlik tişörtü sipariş formu',
+      icon: <Shirt className="w-6 h-6" />, 
+      color: 'from-orange-400 to-red-500', 
+      difficulty: 'Kolay', 
+      time: '2 dk',
+      features: ['Beden Seçimi', 'Renk Tercihi', 'Tasarım Önerileri', 'Teslimat Adresi'],
+      popular: false
+    },
+    { 
+      id: 'registration', 
+      title: 'Etkinlik Kayıt Formu', 
+      description: 'Seminer, konferans ve workshop kayıt formu',
+      icon: <Building className="w-6 h-6" />, 
+      color: 'from-indigo-400 to-purple-500', 
+      difficulty: 'Orta', 
+      time: '4 dk',
+      features: ['Kişisel Bilgiler', 'Şirket Bilgileri', 'Oturum Seçimi', 'Sertifika İsteği'],
+      popular: true
+    }
   ];
 
   const [recentSurveys, setRecentSurveys] = useState<Survey[]>([]);
@@ -154,8 +453,6 @@ const Home: React.FC = () => {
     }
   };
 
-  // Jira token testi kaldırıldı
-
   // AI anket oluşturma fonksiyonu
   const handleAIGenerate = async () => {
     console.log('🚀 AI Anket Oluşturma Başladı:', aiDescription);
@@ -249,8 +546,6 @@ const Home: React.FC = () => {
         ))}
       </div>
 
-
-
       <main className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <motion.div
           variants={containerVariants}
@@ -279,7 +574,7 @@ const Home: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
             >
-              Yapay zeka destekli anket oluşturucu ile benzersiz sorular hazırlayın, 
+              Profesyonel anket oluşturucu ile benzersiz sorular hazırlayın, 
               trend analizi yapın ve daha fazla yanıt alın.
             </motion.p>
           </section>
@@ -289,7 +584,6 @@ const Home: React.FC = () => {
             <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-2 border border-white/20">
               {[
                 { id: 'templates', label: 'Şablonlar', icon: <FileText className="w-5 h-5" /> },
-                { id: 'ai', label: 'AI Önerileri', icon: <Sparkles className="w-5 h-5" /> },
                 { id: 'trending', label: 'Trendler', icon: <TrendingUp className="w-5 h-5" /> }
               ].map((tab) => (
                 <motion.button
@@ -321,62 +615,111 @@ const Home: React.FC = () => {
                 transition={{ duration: 0.3 }}
               >
                 {/* New Form Section */}
-                <section className="mb-16">
-                  <div className="flex items-center justify-between mb-8">
-                    <h2 className="text-3xl font-bold text-white">
+                <section className="mb-20">
+                  <div className="text-center mb-12">
+                    <h2 className="text-4xl font-bold text-white mb-4">
                       Yeni bir form hazırlamaya başlayın
                     </h2>
-                    <div className="flex items-center space-x-4">
-                      <motion.button
-                        className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-2xl font-medium shadow-2xl"
-                        whileHover={{ scale: 1.05, y: -2 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={openAIModal}
-                      >
-                        <Rocket className="w-5 h-5 inline mr-2" />
-                        AI Destekli Oluştur
-                      </motion.button>
-                      {/* Jira Token Test butonu kaldırıldı */}
-                    </div>
+                    <p className="text-blue-200 text-lg max-w-2xl mx-auto">
+                      Form oluşturucu ile hızlıca profesyonel anketler hazırlayın
+                    </p>
                   </div>
                   
-                  <div className="grid grid-cols-1 lg:grid-cols-6 gap-8">
-                    {/* Blank Form Card */}
+                  {/* Quick Actions */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16 max-w-5xl mx-auto">
+                    {/* Boş Form */}
                     <motion.div
-                      variants={itemVariants}
-                      className="lg:col-span-2"
+                      className="group cursor-pointer"
+                      whileHover={{ y: -8, scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => navigate('/form-builder')}
                     >
-                      <motion.div 
-                        className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8 text-center cursor-pointer group hover:bg-white/20 transition-all duration-300"
-                        whileHover={{ scale: 1.02, y: -5 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => navigate('/form-builder')}
-                      >
-                        <div className="w-24 h-24 bg-gradient-to-br from-amber-200 to-orange-200 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl group-hover:shadow-amber-300/25 transition-all duration-300">
-                          <Plus className="w-12 h-12 text-amber-800" />
+                      <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl rounded-3xl p-8 border border-white/20 shadow-2xl group-hover:shadow-3xl transition-all duration-500 h-full">
+                        <div className="text-center">
+                          <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl group-hover:shadow-2xl group-hover:scale-110 transition-all duration-300">
+                            <Plus className="w-8 h-8 text-white" />
+                    </div>
+                          <h3 className="text-xl font-bold text-white mb-3 group-hover:text-yellow-200 transition-colors">
+                            Boş Form
+                          </h3>
+                          <p className="text-blue-200 text-sm mb-4">
+                            Sıfırdan yeni bir form oluşturun
+                          </p>
+                          <div className="flex items-center justify-center text-xs text-blue-300">
+                            <Sparkles className="w-3 h-3 mr-1" />
+                            AI Destekli
+                  </div>
                         </div>
-                        <h3 className="text-2xl font-bold text-white mb-3">Boş Form</h3>
-                        <p className="text-blue-200 mb-6">AI destekli sıfırdan yeni bir form oluşturun</p>
-                        <div className="flex items-center justify-center space-x-2 text-sm text-blue-300">
-                          <Sparkles className="w-4 h-4" />
-                          <span>AI Destekli</span>
+                      </div>
+                    </motion.div>
+                  
+                    {/* AI Oluşturucu */}
+                    <motion.div
+                      className="group cursor-pointer"
+                      whileHover={{ y: -8, scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={openAIModal}
+                    >
+                      <div className="bg-gradient-to-br from-purple-500/20 to-blue-500/20 backdrop-blur-xl rounded-3xl p-8 border border-purple-300/30 shadow-2xl group-hover:shadow-3xl transition-all duration-500 h-full">
+                        <div className="text-center">
+                          <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl group-hover:shadow-2xl group-hover:scale-110 transition-all duration-300">
+                            <Sparkles className="w-8 h-8 text-white animate-pulse" />
+                          </div>
+                          <h3 className="text-xl font-bold text-white mb-3 group-hover:text-purple-200 transition-colors">
+                            AI Oluşturucu
+                          </h3>
+                          <p className="text-blue-200 text-sm mb-4">
+                            Yapay zeka ile otomatik oluşturun
+                          </p>
+                          <div className="flex items-center justify-center text-xs text-purple-300">
+                            <Rocket className="w-3 h-3 mr-1" />
+                            Akıllı Öneriler
+                          </div>
                         </div>
-                      </motion.div>
+                      </div>
                     </motion.div>
 
+                    {/* İstatistik Kartı */}
+                      <motion.div 
+                      className="group"
+                      whileHover={{ y: -8, scale: 1.02 }}
+                    >
+                      <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 backdrop-blur-xl rounded-3xl p-8 border border-green-300/30 shadow-2xl group-hover:shadow-3xl transition-all duration-500 h-full">
+                        <div className="text-center">
+                          <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl group-hover:shadow-2xl group-hover:scale-110 transition-all duration-300">
+                            <BarChart3 className="w-8 h-8 text-white" />
+                        </div>
+                          <h3 className="text-xl font-bold text-white mb-3 group-hover:text-green-200 transition-colors">
+                            Bu Ay
+                          </h3>
+                          <p className="text-green-300 text-2xl font-bold mb-2">
+                            +156%
+                          </p>
+                          <div className="flex items-center justify-center text-xs text-green-300">
+                            <TrendingUp className="w-3 h-3 mr-1" />
+                            Artış oranı
+                          </div>
+                        </div>
+                        </div>
+                      </motion.div>
+                  </div>
+
                     {/* Template Gallery */}
-                    <div className="lg:col-span-4">
-                      <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-xl font-semibold text-white">Şablon Galerisi</h3>
+                  <div className="max-w-7xl mx-auto">
+                    <div className="flex items-center justify-between mb-8">
+                      <div>
+                        <h3 className="text-2xl font-bold text-white mb-2">Şablon Galerisi</h3>
+                        <p className="text-blue-200">Hazır şablonlar ile hızlıca başlayın</p>
+                      </div>
                         <div className="flex items-center space-x-3">
                           <motion.button 
-                            className="p-2 hover:bg-white/10 rounded-xl text-purple-300 hover:text-white transition-colors"
+                          className="p-2 hover:bg-white/10 rounded-xl text-blue-300 hover:text-white transition-colors"
                             whileHover={{ scale: 1.1, rotate: 5 }}
                           >
-                            <ChevronDown className="w-5 h-5" />
+                          <Grid3X3 className="w-5 h-5" />
                           </motion.button>
                           <motion.button 
-                            className="p-2 hover:bg-white/10 rounded-xl text-purple-300 hover:text-white transition-colors"
+                          className="p-2 hover:bg-white/10 rounded-xl text-blue-300 hover:text-white transition-colors"
                             whileHover={{ scale: 1.1, rotate: -5 }}
                           >
                             <MoreVertical className="w-5 h-5" />
@@ -384,86 +727,97 @@ const Home: React.FC = () => {
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
                         {templates.map((template, index) => (
                           <motion.div
                             key={template.id}
                             variants={itemVariants}
                             custom={index}
-                            className="group cursor-pointer"
+                          className="group cursor-pointer relative"
                             whileHover={{ 
                               scale: 1.05, 
-                              rotateY: 10,
+                            rotateY: 5,
                               z: 50
                             }}
                             transition={{ type: "spring", stiffness: 300 }}
-                            onClick={() => navigate('/form-builder')}
-                          >
-                            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden group-hover:shadow-2xl transition-all duration-300">
-                              <div className={`${template.color} p-4 flex items-center justify-center relative overflow-hidden`}>
-                                <div className="text-white relative z-10">
+                          onClick={() => handleTemplateClick(template.id)}
+                        >
+                          {/* Popular Badge */}
+                          {template.popular && (
+                            <div className="absolute -top-2 -right-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full z-20 shadow-lg">
+                              ⭐ Popüler
+                            </div>
+                          )}
+                          
+                          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 overflow-hidden group-hover:shadow-3xl transition-all duration-300 h-full">
+                            {/* Icon Section */}
+                            <div className={`bg-gradient-to-br ${template.color} p-4 flex items-center justify-center relative overflow-hidden`}>
+                              <div className="text-white relative z-10 transform group-hover:scale-110 transition-transform duration-300">
                                   {template.icon}
                                 </div>
                                 <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                               </div>
-                              <div className="p-4">
-                                <h4 className="text-sm font-medium text-white text-center mb-2 group-hover:text-purple-200 transition-colors">
+                            
+                            {/* Content Section */}
+                            <div className="p-4 flex flex-col flex-grow">
+                              {/* Header */}
+                              <div className="flex items-center justify-between mb-2">
+                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                  template.difficulty === 'Kolay' ? 'bg-green-500/20 text-green-300' :
+                                  template.difficulty === 'Orta' ? 'bg-yellow-500/20 text-yellow-300' :
+                                  'bg-red-500/20 text-red-300'
+                                }`}>
+                                  {template.difficulty}
+                                </span>
+                                <span className="text-xs text-blue-300">
+                                  {template.time}
+                                </span>
+                              </div>
+                              
+                              {/* Title */}
+                              <h4 className="text-white font-bold text-sm leading-tight mb-2 group-hover:text-blue-200 transition-colors">
                                   {template.title}
                                 </h4>
-                                <div className="flex items-center justify-between text-xs text-purple-300">
-                                  <span>{template.difficulty}</span>
-                                  <span>{template.time}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </motion.div>
-                        ))}
-                      </div>
+                              
+                              {/* Description */}
+                              <p className="text-blue-200 text-xs leading-relaxed mb-3 flex-grow line-clamp-2">
+                                {template.description}
+                              </p>
+                              
+                              {/* Features */}
+                              <div className="space-y-2">
+                                <div className="flex flex-wrap gap-1">
+                                  {template.features.slice(0, 2).map((feature, idx) => (
+                                    <span key={idx} className="text-xs bg-blue-500/20 text-blue-200 px-2 py-0.5 rounded-full">
+                                      {feature}
+                                    </span>
+                                  ))}
+                                  {template.features.length > 2 && (
+                                    <span className="text-xs bg-gray-500/20 text-gray-300 px-2 py-0.5 rounded-full">
+                                      +{template.features.length - 2}
+                                    </span>
+                                  )}
                     </div>
                   </div>
                   
-                  {/* Jira test sonucu alanı kaldırıldı */}
-                </section>
-              </motion.div>
-            )}
-
-            {activeTab === 'ai' && (
-              <motion.div
-                key="ai"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-6"
-              >
-                <h2 className="text-3xl font-bold text-white text-center mb-8">AI Önerileri</h2>
-                {aiSuggestions.map((suggestion, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, x: -50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.5, delay: index * 0.1 }}
-                    className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 shadow-xl"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center">
-                          <Lightbulb className="w-6 h-6 text-white" />
+                              {/* Call to Action */}
+                              <div className="mt-3 pt-2 border-t border-white/10">
+                                <div className="flex items-center justify-center text-blue-300 group-hover:text-white transition-colors">
+                                  <Plus className="w-3 h-3 mr-1" />
+                                  <span className="text-xs font-medium">Kullan</span>
                         </div>
-                        <div>
-                          <h3 className="text-xl font-semibold text-white">{suggestion.title}</h3>
-                          <p className="text-purple-200">{suggestion.reason}</p>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-green-400">{suggestion.confidence}%</div>
-                        <div className="text-sm text-purple-300">Güven</div>
                       </div>
                     </div>
                   </motion.div>
                 ))}
+                    </div>
+                  </div>
+                </section>
               </motion.div>
             )}
+
+
 
             {activeTab === 'trending' && (
               <motion.div
@@ -694,5 +1048,3 @@ const Home: React.FC = () => {
 };
 
 export default Home;
-
-

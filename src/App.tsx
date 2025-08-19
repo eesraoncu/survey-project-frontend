@@ -5,7 +5,7 @@ import Layout from './components/Layout'
 import Home from './pages/Home'
 import Forms from './pages/Forms'
 import FormBuilder from './pages/FormBuilder'
-import AIFormBuilder from './pages/AIFormBuilder'
+
 import FormResponse from './pages/FormResponse'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -760,14 +760,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/ai-form-builder"
-          element={
-            <ProtectedRoute>
-              <AIFormBuilder />
-            </ProtectedRoute>
-          }
-        />
+
         <Route
           path="/forms/new"
           element={

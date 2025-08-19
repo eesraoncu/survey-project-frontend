@@ -1,4 +1,6 @@
 // AI Service - Backend AI endpoint'leri için servis
+import { getQuestionTypeIdByFrontendType } from './questionTypeService';
+
 export interface AIGeneratedSurvey {
   id: string;
   title: string;
@@ -15,6 +17,7 @@ export interface AIQuestion {
   options?: string[];
   required: boolean;
   aiGenerated: true;
+  questionTypeId?: number; // YENİ: Backend question type ID'si
 }
 
 export interface AISurveyAnalysis {
@@ -171,14 +174,20 @@ class AIService {
       id: data.id || `ai-survey-${Date.now()}`,
       title: data.surveyName || data.survey_title || data.title || 'AI ile Oluşturulan Anket',
       description: data.surveyDescription || data.survey_description || data.description || '',
-      questions: (data.questions || []).map((q: any, index: number) => ({
-        id: q.id || `ai-question-${index}`,
-        type: this.mapBackendQuestionType(q.questionType || q.question_type || q.type),
-        question: q.questionsText || q.question_text || q.question || '',
-        options: q.choices || q.options || [],
-        required: q.required || false,
-        aiGenerated: true
-      })),
+      questions: (data.questions || []).map((q: any, index: number) => {
+        const mappedType = this.mapBackendQuestionType(q.questionType || q.question_type || q.type);
+        const questionTypeId = getQuestionTypeIdByFrontendType(mappedType);
+        
+        return {
+          id: q.id || `ai-question-${index}`,
+          type: mappedType,
+          question: q.questionsText || q.question_text || q.question || '',
+          options: q.choices || q.options || [],
+          required: q.required || false,
+          aiGenerated: true,
+          questionTypeId // YENİ: Backend question type ID'si
+        };
+      }),
       estimatedDuration: data.estimatedDuration || data.estimated_duration || Math.max(2, Math.ceil((data.questions?.length || 0) * 0.5)),
       category: data.category || 'Genel'
     };

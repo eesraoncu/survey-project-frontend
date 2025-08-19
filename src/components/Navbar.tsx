@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { FileText, Plus, BarChart3, Settings, LogIn, LogOut, User, Search, Sparkles, Calendar, X } from 'lucide-react'
+import { FileText, Plus, BarChart3, Settings, LogIn, LogOut, User, Search, Calendar, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useState, useRef, useEffect } from 'react'
 
@@ -458,10 +458,9 @@ const Navbar = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="AI destekli arama..."
-                className="w-full pl-10 pr-12 py-2 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-400 focus:border-transparent text-gray-900 placeholder-gray-500 transition-colors duration-300"
+                placeholder="Arama yapın..."
+                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-400 focus:border-transparent text-gray-900 placeholder-gray-500 transition-colors duration-300"
               />
-              <Sparkles className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-purple-500" />
             </div>
           </div>
           

@@ -1,5 +1,15 @@
 import axios from 'axios';
 
+// SHA-256 + Base64 hash fonksiyonu (Backend ile uyumlu)
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = new Uint8Array(hashBuffer);
+  // Base64 formatına çevir (Backend'de kullanılan format)
+  return btoa(String.fromCharCode(...hashArray));
+}
+
 // API Base URL - Proxy kullanarak
 const API_BASE_URL = '/api'; // Vite proxy kullanıyor
 
@@ -96,7 +106,17 @@ export const authService = {
   // Login fonksiyonu
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     try {
-      const response = await apiClient.post<LoginResponse>('/Auth/login', credentials);
+      // Şifreyi hash'le (güvenlik için)
+      const hashedPassword = await hashPassword(credentials.userPassword);
+      
+      // Form data formatında gönder
+      const formData = `userEmail=${encodeURIComponent(credentials.userEmail)}&userPassword=${encodeURIComponent(hashedPassword)}`;
+      
+      const response = await apiClient.post<LoginResponse>('/Auth/login', formData, {
+        headers: { 
+          'Content-Type': 'application/x-www-form-urlencoded' 
+        }
+      });
       
       if (response.data.success) {
         // Token'ı localStorage'a kaydet
@@ -117,7 +137,21 @@ export const authService = {
   // Register fonksiyonu
   async register(userData: RegisterRequest): Promise<LoginResponse> {
     try {
-      const response = await apiClient.post<LoginResponse>('/Auth/register', userData);
+      // Şifreyi hash'le (güvenlik için)
+      const hashedPassword = await hashPassword(userData.userPassword);
+      
+      // JSON formatında gönder (backend uyumluluğu için)
+      const registerPayload = {
+        ...userData,
+        userPassword: hashedPassword
+      };
+      
+      console.log('Register payload:', {
+        ...registerPayload,
+        userPassword: '[HASHED]' // Güvenlik için hash'i gösterme
+      });
+      
+      const response = await apiClient.post<LoginResponse>('/Auth/register', registerPayload);
       
       if (response.data.success) {
         // Token'ı localStorage'a kaydet
@@ -127,6 +161,12 @@ export const authService = {
       
       return response.data;
     } catch (error: any) {
+      console.error('Register error details:', {
+        status: error?.response?.status,
+        statusText: error?.response?.statusText,
+        message: error?.response?.data?.message || error?.message,
+        data: error?.response?.data
+      });
       throw new Error(error.response?.data?.message || 'Kayıt olurken bir hata oluştu');
     }
   },

@@ -14,27 +14,22 @@ import {
   CheckSquare,
   Radio,
   List,
-  Star,
-  Heart,
-  ThumbsUp,
   Calendar,
   MapPin,
   Phone,
   Mail,
   User,
+  Star,
   ChevronDown,
-  ChevronUp,
   GripVertical,
   AlertCircle,
-  CheckCircle,
-  Sparkles,
-  X,
-  RefreshCw
+  CheckCircle
 } from 'lucide-react';
 import { surveyService, type FormData as SurveyFormData } from '../services/surveyService';
 import { useAuth } from '../contexts/AuthContext';
 import { questionService, type UpsertQuestionRequest } from '../services/questionService';
-import { aiService, type AIQuestionSuggestion } from '../services/aiService';
+import { getQuestionTypeIdByFrontendType } from '../services/questionTypeService';
+import { ThumbsUp } from 'lucide-react';
 
 interface Question {
   id: string;
@@ -90,18 +85,74 @@ const FormBuilder: React.FC = () => {
   // const [draggedQuestion, setDraggedQuestion] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null);
-  const [showAIQuestions, setShowAIQuestions] = useState(false);
-  const [aiQuestionSuggestions, setAiQuestionSuggestions] = useState<AIQuestionSuggestion[]>([]);
-  const [isLoadingAI, setIsLoadingAI] = useState(false);
-  const [aiError, setAiError] = useState<string>('');
-  const [sentimentModal, setSentimentModal] = useState<{ show: boolean; text?: string; result?: any }>({ show: false });
-  const [isSentimentAnalyzing, setIsSentimentAnalyzing] = useState(false);
+  
 
-  // AI'dan gelen anket verilerini yükle
+
+  // AI'dan gelen anket verilerini ve template verilerini yükle
   useEffect(() => {
-    console.log('🔍 FormBuilder başladı, AI verisi kontrol ediliyor...');
+    console.log('🔍 FormBuilder başladı, veriler kontrol ediliyor...');
     
-    const aiGeneratedData = localStorage.getItem('aiGeneratedSurvey');
+    // Template verilerini kontrol et (Home.tsx'den gelen şablonlar)
+    const templateData = localStorage.getItem('templateFormData');
+    console.log('🔍 Template verisi raw data:', templateData);
+    
+    if (templateData) {
+      try {
+        const template = JSON.parse(templateData);
+        console.log('📊 Template parse edildi:', template);
+        
+        // Template verilerini FormBuilder formatına dönüştür
+        const templateQuestions: Question[] = template.questions?.map((q: any) => ({
+          id: q.id || Date.now().toString(),
+          type: q.type,
+          title: q.title,
+          required: q.required || false,
+          options: q.options || [],
+          placeholder: q.placeholder || '',
+          description: q.description || ''
+        })) || [];
+
+        console.log('🔄 Template soruları dönüştürüldü:', templateQuestions);
+
+        setFormData({
+          title: template.title || 'Şablon Formu',
+          description: template.description || '',
+          backgroundImage: '',
+          questions: templateQuestions,
+          settings: {
+            allowAnonymous: true,
+            showProgressBar: true,
+            allowMultipleResponses: false,
+            theme: 'light'
+          },
+          status: 'draft',
+          category: template.category || 'Genel',
+          tags: ['Şablon']
+        });
+
+        console.log('💾 FormData güncellendi (Template), soru sayısı:', templateQuestions.length);
+
+        // Başarı mesajı göster
+        setSaveMessage({ 
+          type: 'success', 
+          message: `${template.title} şablonu ${templateQuestions.length} soru ile yüklendi!` 
+        });
+
+        // localStorage'dan sil
+        localStorage.removeItem('templateFormData');
+        
+        // 5 saniye sonra mesajı kaldır
+        setTimeout(() => setSaveMessage(null), 5000);
+        
+        return; // Template yüklendiyse AI verilerine bakma
+        
+      } catch (error) {
+        console.error('❌ Template parse hatası:', error);
+      }
+    }
+    
+    // AI verilerini kontrol et (AIFormBuilder'dan gelen)
+    const aiGeneratedData = localStorage.getItem('aiGeneratedForm');
     console.log('🔍 AI verisi raw data:', aiGeneratedData);
     
     if (aiGeneratedData) {
@@ -112,19 +163,19 @@ const FormBuilder: React.FC = () => {
         // AI verilerini FormBuilder formatına dönüştür
         const aiQuestions: Question[] = aiSurvey.questions?.map((q: any, index: number) => ({
           id: `ai-question-${index}`,
-          type: mapAIQuestionType(q.questionType || q.question_type || q.type),
-          title: q.questionsText || q.question_text || q.question || `Soru ${index + 1}`,
+          type: mapAIQuestionType(q.type),
+          title: q.title,
           required: q.required || false,
-          options: q.choices || q.options || [],
-          placeholder: `${q.questionsText || q.question_text || q.question || 'Bu soru'} için yanıtınızı girin`,
-          description: ''
+          options: q.options || [],
+          placeholder: q.placeholder || '',
+          description: q.description || ''
         })) || [];
 
         console.log('🔄 AI soruları dönüştürüldü:', aiQuestions);
 
         setFormData({
-          title: aiSurvey.surveyName || aiSurvey.survey_title || aiSurvey.title || 'AI ile Oluşturulan Anket',
-          description: aiSurvey.surveyDescription || aiSurvey.survey_description || aiSurvey.description || '',
+          title: aiSurvey.title || 'AI ile Oluşturulan Anket',
+          description: aiSurvey.description || '',
           backgroundImage: '',
           questions: aiQuestions,
           settings: {
@@ -147,7 +198,7 @@ const FormBuilder: React.FC = () => {
         });
 
         // localStorage'dan sil
-        localStorage.removeItem('aiGeneratedSurvey');
+        localStorage.removeItem('aiGeneratedForm');
         
         // 5 saniye sonra mesajı kaldır
         setTimeout(() => setSaveMessage(null), 5000);
@@ -158,7 +209,7 @@ const FormBuilder: React.FC = () => {
           type: 'error', 
           message: 'AI verisi yüklenirken hata oluştu.' 
         });
-        localStorage.removeItem('aiGeneratedSurvey');
+        localStorage.removeItem('aiGeneratedForm');
       }
     }
   }, []);
@@ -208,88 +259,9 @@ const FormBuilder: React.FC = () => {
     }
   };
 
-  // AI'dan soru önerileri al
-  const handleAIQuestionSuggestions = async () => {
-    setIsLoadingAI(true);
-    setAiError('');
-    
-    try {
-      const context = {
-        surveyTitle: formData.title,
-        surveyDescription: formData.description,
-        existingQuestions: formData.questions.map(q => q.title),
-        category: formData.category
-      };
-      
-      const suggestions = await aiService.generateQuestions(context);
-      setAiQuestionSuggestions(suggestions);
-      setShowAIQuestions(true);
-      
-    } catch (error: any) {
-      const errorMessage = aiService.formatErrorMessage(error);
-      setAiError(errorMessage);
-      setSaveMessage({ type: 'error', message: errorMessage });
-      setTimeout(() => setSaveMessage(null), 5000);
-    } finally {
-      setIsLoadingAI(false);
-    }
-  };
 
-  // AI önerilen soruyu formuna ekle
-  const addAIQuestion = (suggestion: AIQuestionSuggestion) => {
-    const newQuestion: Question = {
-      id: `ai-${Date.now()}`,
-      type: mapAIQuestionType(suggestion.type),
-      title: suggestion.question,
-      required: false,
-      options: suggestion.options || [],
-      placeholder: `${suggestion.question} için yanıtınızı girin`,
-      description: suggestion.reasoning
-    };
 
-    setFormData(prev => ({
-      ...prev,
-      questions: [...prev.questions, newQuestion]
-    }));
-
-    // Eklenen soruyu listeden kaldır
-    setAiQuestionSuggestions(prev => 
-      prev.filter(s => s.question !== suggestion.question)
-    );
-
-    setSaveMessage({ 
-      type: 'success', 
-      message: 'AI önerisi başarıyla eklendi!' 
-    });
-    setTimeout(() => setSaveMessage(null), 3000);
-  };
-
-  // Sentiment analizi fonksiyonu
-  const handleSentimentAnalyze = async (text: string) => {
-    if (!text.trim()) {
-      setSaveMessage({ type: 'error', message: 'Analiz için metin gerekli!' });
-      setTimeout(() => setSaveMessage(null), 3000);
-      return;
-    }
-
-    setIsSentimentAnalyzing(true);
-    
-    try {
-      const result = await aiService.analyzeSentiment(text);
-      setSentimentModal({
-        show: true,
-        text,
-        result
-      });
-    } catch (error: any) {
-      const errorMessage = aiService.formatErrorMessage(error);
-      setSaveMessage({ type: 'error', message: errorMessage });
-      setTimeout(() => setSaveMessage(null), 5000);
-    } finally {
-      setIsSentimentAnalyzing(false);
-    }
-  };
-
+  // Soru türleri - backend entegrasyonlu ama UI'da her zaman görünür (11 tip)
   const questionTypes = [
     { type: 'text' as const, label: 'Kısa Yanıt', icon: <Type className="w-5 h-5" />, color: 'bg-blue-500' },
     { type: 'textarea' as const, label: 'Paragraf', icon: <List className="w-5 h-5" />, color: 'bg-green-500' },
@@ -403,17 +375,37 @@ const FormBuilder: React.FC = () => {
 
       // 3) Soruları Questions API'ına yaz
       if (formData.questions.length > 0) {
-        const payloads: UpsertQuestionRequest[] = formData.questions.map(q => {
-          const titleTrim = (q.title || '').trim()
-          const placeholderTrim = (q.placeholder || '').trim()
-          const questionsText = titleTrim ? titleTrim : (placeholderTrim || 'Yeni Soru')
-          return {
-            questionsText,
-            questionType: q.type,
-            choices: q.options || [],
-            surveysId: surveyId,
-          }
-        });
+        console.log('🔄 Question type mapping başlatılıyor...');
+        
+        // Tüm soruların question type ID'lerini async olarak al
+        const payloads: UpsertQuestionRequest[] = await Promise.all(
+          formData.questions.map(async (q, index) => {
+            const titleTrim = (q.title || '').trim()
+            const placeholderTrim = (q.placeholder || '').trim()
+            const questionsText = titleTrim ? titleTrim : (placeholderTrim || 'Yeni Soru')
+            
+            // Frontend tipinden backend question type ID'sini async olarak al
+            let questionTypeId: number;
+            try {
+              questionTypeId = await getQuestionTypeIdByFrontendType(q.type);
+            } catch (error) {
+              console.warn(`❌ Async mapping failed for ${q.type}, defaulting to ID 1`);
+              questionTypeId = 1;
+            }
+            
+            console.log(`🔍 Soru ${index + 1}: "${questionsText}" - Tip: ${q.type} → ID: ${questionTypeId}`);
+            
+            return {
+              questionsText,
+              questionType: q.type, // Geriye uyumlu
+              questionTypeId, // YENİ: Backend'in beklediği ID
+              choices: q.options || [],
+              surveysId: surveyId,
+              isRequired: q.required,
+              order: index + 1
+            }
+          })
+        );
 
         console.log('📤 Backend\'e gönderilecek veri (Questions):', payloads);
         await Promise.all(
@@ -710,38 +702,6 @@ const FormBuilder: React.FC = () => {
                     </div>
                     <h3 className="text-xl font-semibold text-white mb-3">İlk sorunuzu ekleyin</h3>
                     <p className="text-blue-200 mb-6">Sol taraftaki soru türlerinden birini seçerek başlayın</p>
-                    
-                    {/* AI Soru Önerisi Butonu */}
-                    <motion.button
-                      onClick={handleAIQuestionSuggestions}
-                      disabled={isLoadingAI || !formData.title.trim()}
-                      className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-medium shadow-lg flex items-center space-x-2 mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      {isLoadingAI ? (
-                        <>
-                          <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                          >
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
-                          </motion.div>
-                          <span>AI Önerileri Yükleniyor...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-5 h-5" />
-                          <span>AI'dan Soru Öner</span>
-                        </>
-                      )}
-                    </motion.button>
-                    
-                    {!formData.title.trim() && (
-                      <p className="text-yellow-300 text-sm mt-3">
-                        AI soru önerisi için önce form başlığını girin
-                      </p>
-                    )}
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -787,27 +747,6 @@ const FormBuilder: React.FC = () => {
                             className="flex-1 text-lg font-semibold bg-transparent border-none outline-none text-white"
                             placeholder="Yeni Soru"
                           />
-                          {question.title.trim() && (
-                            <motion.button
-                              onClick={() => handleSentimentAnalyze(question.title)}
-                              disabled={isSentimentAnalyzing}
-                              className="p-2 bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white rounded-lg transition-colors disabled:opacity-50"
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              title="Sentiment Analizi"
-                            >
-                              {isSentimentAnalyzing ? (
-                                <motion.div
-                                  animate={{ rotate: 360 }}
-                                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                >
-                                  <RefreshCw className="w-4 h-4" />
-                                </motion.div>
-                              ) : (
-                                <span className="text-sm">💭</span>
-                              )}
-                            </motion.button>
-                          )}
                         </div>
                         
                                                  {question.type === 'radio' || question.type === 'checkbox' || question.type === 'select' ? (
@@ -988,7 +927,7 @@ const FormBuilder: React.FC = () => {
                       <p className="text-blue-300 text-center py-8">Henüz soru eklenmemiş</p>
                     ) : (
                       <div className="space-y-6">
-                        {formData.questions.map((question, index) => (
+                        {formData.questions.map((question) => (
                           <div key={question.id} className="bg-white/10 rounded-xl p-4">
                             <h4 className="text-white font-medium mb-3">
                               {question.title} {question.required && <span className="text-red-400">*</span>}
@@ -1212,244 +1151,7 @@ const FormBuilder: React.FC = () => {
         </div>
       </main>
 
-      {/* AI Soru Önerileri Modal */}
-      <AnimatePresence>
-        {showAIQuestions && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-50 p-4"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
-            >
-              {/* Header */}
-              <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4 text-white">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <Sparkles className="w-6 h-6" />
-                    <h3 className="text-xl font-bold">AI Soru Önerileri</h3>
-                  </div>
-                  <button
-                    onClick={() => setShowAIQuestions(false)}
-                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
 
-              {/* Content */}
-              <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-                {aiError ? (
-                  <div className="text-center py-8">
-                    <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-                    <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Soru Önerisi Hatası</h4>
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">{aiError}</p>
-                    <button
-                      onClick={handleAIQuestionSuggestions}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                    >
-                      Tekrar Dene
-                    </button>
-                  </div>
-                ) : aiQuestionSuggestions.length > 0 ? (
-                  <div className="space-y-4">
-                    <div className="text-center mb-6">
-                      <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                        AI tarafından önerilen sorular
-                      </h4>
-                      <p className="text-gray-600 dark:text-gray-400">
-                        Beğendiğiniz soruları formunuza ekleyin
-                      </p>
-                    </div>
-                    
-                    <div className="grid gap-4">
-                      {aiQuestionSuggestions.map((suggestion, index) => (
-                        <motion.div
-                          key={index}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                          className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2 mb-2">
-                                <span className="text-sm font-medium px-2 py-1 bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 rounded">
-                                  {suggestion.type === 'multiple_choice' ? 'Çoktan Seçmeli' :
-                                   suggestion.type === 'text' ? 'Metin' :
-                                   suggestion.type === 'rating' ? 'Derecelendirme' :
-                                   suggestion.type === 'yes_no' ? 'Evet/Hayır' :
-                                   suggestion.type === 'dropdown' ? 'Açılır Liste' : 'Metin'}
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  Güven: {suggestion.confidence}%
-                                </span>
-                              </div>
-                              
-                              <h5 className="font-medium text-gray-900 dark:text-white mb-2">
-                                {suggestion.question}
-                              </h5>
-                              
-                              {suggestion.options && suggestion.options.length > 0 && (
-                                <div className="mb-2">
-                                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Seçenekler:</p>
-                                  <ul className="text-sm text-gray-700 dark:text-gray-300 ml-4">
-                                    {suggestion.options.map((option, i) => (
-                                      <li key={i} className="list-disc">{option}</li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                              
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                <strong>Gerekçe:</strong> {suggestion.reasoning}
-                              </p>
-                            </div>
-                            
-                            <button
-                              onClick={() => addAIQuestion(suggestion)}
-                              className="ml-4 px-3 py-1 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors"
-                            >
-                              Ekle
-                            </button>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Sparkles className="w-16 h-16 text-indigo-600 mx-auto mb-4" />
-                    <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Soru önerileri hazırlanıyor</h4>
-                    <p className="text-gray-600 dark:text-gray-400">AI size en uygun soruları hazırlıyor...</p>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Sentiment Analizi Modal */}
-      <AnimatePresence>
-        {sentimentModal.show && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-50 p-4"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
-            >
-              {/* Header */}
-              <div className="bg-gradient-to-r from-pink-500 to-rose-600 px-6 py-4 text-white">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-2xl">💭</span>
-                    <h3 className="text-xl font-bold">Sentiment Analizi</h3>
-                  </div>
-                  <button
-                    onClick={() => setSentimentModal({ show: false })}
-                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Content */}
-              <div className="p-6">
-                {sentimentModal.result ? (
-                  <div className="space-y-6">
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Analiz Edilen Metin</h4>
-                      <p className="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
-                        "{sentimentModal.text}"
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-4 bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20 rounded-lg">
-                        <h5 className="font-medium text-gray-900 dark:text-white mb-1">Sentiment</h5>
-                        <div className="flex items-center space-x-2">
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                            sentimentModal.result.sentiment === 'positive' ? 'bg-green-100 text-green-800' :
-                            sentimentModal.result.sentiment === 'negative' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {sentimentModal.result.sentiment === 'positive' ? '😊 Pozitif' :
-                             sentimentModal.result.sentiment === 'negative' ? '😞 Negatif' :
-                             '😐 Nötr'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg">
-                        <h5 className="font-medium text-gray-900 dark:text-white mb-1">Güven Skoru</h5>
-                        <div className="flex items-center space-x-2">
-                          <div className="flex-1 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                            <div 
-                              className="bg-blue-600 h-2 rounded-full transition-all duration-1000"
-                              style={{ width: `${sentimentModal.result.confidence}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            {sentimentModal.result.confidence}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {sentimentModal.result.emotions && Object.keys(sentimentModal.result.emotions).length > 0 && (
-                      <div>
-                        <h5 className="font-medium text-gray-900 dark:text-white mb-3">Duygu Analizi</h5>
-                        <div className="grid grid-cols-2 gap-3">
-                          {Object.entries(sentimentModal.result.emotions).map(([emotion, score]: [string, any]) => (
-                            <div key={emotion} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                              <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">{emotion}</span>
-                              <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                {(score * 100).toFixed(1)}%
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                      <h5 className="font-medium text-amber-800 dark:text-amber-200 mb-2">💡 Öneri</h5>
-                      <p className="text-sm text-amber-700 dark:text-amber-300">
-                        {sentimentModal.result.sentiment === 'negative' 
-                          ? 'Bu soru olumsuz bir ton içeriyor. Daha olumlu ve teşvik edici bir dil kullanmayı deneyebilirsiniz.'
-                          : sentimentModal.result.sentiment === 'positive'
-                          ? 'Bu soru olumlu bir ton taşıyor. Katılımcılar için motive edici olacaktır.'
-                          : 'Bu soru nötr bir ton taşıyor. İhtiyaca göre daha samimi veya profesyonel hale getirebilirsiniz.'}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <div className="w-16 h-16 bg-pink-100 dark:bg-pink-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <span className="text-2xl">💭</span>
-                    </div>
-                    <p className="text-gray-600 dark:text-gray-400">Sentiment analizi yapılıyor...</p>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Image Upload Modal */}
       <AnimatePresence>

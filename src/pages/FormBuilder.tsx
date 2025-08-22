@@ -23,7 +23,9 @@ import {
   ChevronDown,
   GripVertical,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  Lock,
+  Globe
 } from 'lucide-react';
 import { surveyService, type FormData as SurveyFormData } from '../services/surveyService';
 import { useAuth } from '../contexts/AuthContext';
@@ -85,13 +87,69 @@ const FormBuilder: React.FC = () => {
   // const [draggedQuestion, setDraggedQuestion] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishedLink, setPublishedLink] = useState<string | null>(null);
+  const [showAccessManager, setShowAccessManager] = useState(false);
+  const [editorVisibility, setEditorVisibility] = useState<'restricted' | 'anyone'>('restricted');
+  const [participantVisibility, setParticipantVisibility] = useState<'link' | 'signedin'>('link');
+  const [copyInfo, setCopyInfo] = useState<string | null>(null);
   
 
 
-  // AI'dan gelen anket verilerini ve template verilerini yükle
+  // Mevcut anketi yükle (surveyId varsa) ve AI/Template verilerini yükle
   useEffect(() => {
     console.log('🔍 FormBuilder başladı, veriler kontrol ediliyor...');
+    const params = new URLSearchParams(window.location.search);
+    const existingSurveyId = params.get('surveyId');
+
+    const loadExisting = async (surveyId: string) => {
+      try {
+        console.log('🗂️ Mevcut anket yükleniyor:', surveyId);
+        const survey = await surveyService.getSurveyById(surveyId);
+        // Soruları da çek
+        const questions = await questionService.getBySurveyId(surveyId);
+        const mappedQuestions: Question[] = (questions || []).map((q, idx) => ({
+          id: String(q.id ?? idx),
+          type: (q.questionType as any) || 'text',
+          title: q.questionsText || 'Soru',
+          required: false,
+          options: Array.isArray(q.choices) ? q.choices : [],
+          placeholder: '',
+          description: ''
+        }));
+
+        setFormData({
+          title: survey.surveyName || '',
+          description: survey.surveyDescription || '',
+          backgroundImage: survey.backgroundImage || '',
+          questions: mappedQuestions,
+          settings: survey.settings || {
+            allowAnonymous: true,
+            showProgressBar: true,
+            allowMultipleResponses: false,
+            theme: 'light'
+          },
+          status: survey.status || 'draft',
+          category: survey.category || 'Genel',
+          tags: survey.tags || []
+        });
+
+        setSaveMessage({ type: 'success', message: `Anket yüklendi (${mappedQuestions.length} soru).` });
+        setTimeout(() => setSaveMessage(null), 3000);
+        return true;
+      } catch (e) {
+        console.error('❌ Mevcut anket yüklenemedi:', e);
+        return false;
+      }
+    };
     
+    // Eğer mevcut anket ID'si varsa önce onu yükle, yoksa template/AI verilerine bak
+    if (existingSurveyId) {
+      void loadExisting(existingSurveyId);
+      return;
+    }
+
     // Template verilerini kontrol et (Home.tsx'den gelen şablonlar)
     const templateData = localStorage.getItem('templateFormData');
     console.log('🔍 Template verisi raw data:', templateData);
@@ -151,8 +209,8 @@ const FormBuilder: React.FC = () => {
       }
     }
     
-    // AI verilerini kontrol et (AIFormBuilder'dan gelen)
-    const aiGeneratedData = localStorage.getItem('aiGeneratedForm');
+    // AI verilerini kontrol et (AI oluşturucudan gelen)
+    const aiGeneratedData = localStorage.getItem('aiGeneratedSurvey') || localStorage.getItem('aiGeneratedForm');
     console.log('🔍 AI verisi raw data:', aiGeneratedData);
     
     if (aiGeneratedData) {
@@ -164,7 +222,7 @@ const FormBuilder: React.FC = () => {
         const aiQuestions: Question[] = aiSurvey.questions?.map((q: any, index: number) => ({
           id: `ai-question-${index}`,
           type: mapAIQuestionType(q.type),
-          title: q.title,
+          title: q.title || q.question || '',
           required: q.required || false,
           options: q.options || [],
           placeholder: q.placeholder || '',
@@ -198,6 +256,7 @@ const FormBuilder: React.FC = () => {
         });
 
         // localStorage'dan sil
+        localStorage.removeItem('aiGeneratedSurvey');
         localStorage.removeItem('aiGeneratedForm');
         
         // 5 saniye sonra mesajı kaldır
@@ -349,8 +408,15 @@ const FormBuilder: React.FC = () => {
 
       console.log('📤 Backend\'e gönderilecek veri (Survey):', surveyData);
 
-      // 1) Anketi kaydet
-      const savedSurvey = await surveyService.createSurvey(surveyData);
+      // 1) Anketi kaydet veya güncelle (surveyId varsa güncelle)
+      const params = new URLSearchParams(window.location.search);
+      const existingSurveyId = params.get('surveyId');
+      const savedSurvey = existingSurveyId
+        ? await surveyService.updateSurvey(existingSurveyId, surveyData).catch(async () => {
+            // Eğer backend update endpoint'i yoksa create'e düş
+            return await surveyService.createSurvey(surveyData)
+          })
+        : await surveyService.createSurvey(surveyData);
       console.log('✅ Anket kaydı tamamlandı:', savedSurvey);
       console.log('✅ Kayıt edilen anket sahiplik alanları:', {
         id: (savedSurvey as any).id ?? (savedSurvey as any)._id,
@@ -364,7 +430,7 @@ const FormBuilder: React.FC = () => {
       });
 
       // 2) Kaydedilen anket ID'sini tespit et
-      const rawSurveyId: any = (savedSurvey as any)?.id ?? (savedSurvey as any)?.surveyId ?? (savedSurvey as any)?._id;
+      const rawSurveyId: any = existingSurveyId ?? (savedSurvey as any)?.id ?? (savedSurvey as any)?.surveyId ?? (savedSurvey as any)?._id;
       if (!rawSurveyId && formData.questions.length > 0) {
         throw new Error('Anket ID alınamadı, sorular kaydedilemedi.');
       }
@@ -486,6 +552,92 @@ const FormBuilder: React.FC = () => {
     }
   };
 
+  const handlePublishInternal = async (): Promise<string | null> => {
+    try {
+      // Kaydet ve aktif yap
+      // 1) Anketi oluştur/güncelle
+      const params = new URLSearchParams(window.location.search);
+      const existingSurveyId = params.get('surveyId');
+
+      // Kaydetme için mevcut handleSaveForm içindeki hazır veriyi tekrar oluşturalım
+      if (!formData.title.trim() || formData.questions.length === 0) {
+        alert('Yayınlamak için başlık ve en az bir soru gereklidir.');
+        return null;
+      }
+
+      const surveyData: SurveyFormData = {
+        surveyName: formData.title,
+        surveyDescription: formData.description,
+        surveyTypeId: 1,
+        isActive: true,
+        usersId: user?.id != null ? Number(user.id) : undefined,
+        backgroundImage: formData.backgroundImage,
+        questions: formData.questions.map(q => ({
+          id: q.id,
+          type: q.type,
+          title: q.title,
+          required: q.required,
+          options: q.options || [],
+          placeholder: q.placeholder || '',
+          description: q.description || ''
+        })),
+        settings: formData.settings,
+        status: 'active',
+        category: formData.category,
+        tags: formData.tags
+      };
+
+      let savedSurvey: any = null
+      let createdNew = false
+      if (existingSurveyId) {
+        try {
+          // Mevcut anketi güncellemeyi dene
+          savedSurvey = await surveyService.updateSurvey(existingSurveyId, surveyData)
+        } catch (err) {
+          // Backend update endpoint'i yoksa: yeni oluştur
+          createdNew = true
+          savedSurvey = await surveyService.createSurvey(surveyData)
+        }
+      } else {
+        createdNew = true
+        savedSurvey = await surveyService.createSurvey(surveyData)
+      }
+
+      const rawSurveyId: any = existingSurveyId ?? (savedSurvey as any)?.id ?? (savedSurvey as any)?.surveyId ?? (savedSurvey as any)?._id;
+      const surveyId: number | string = typeof rawSurveyId === 'string' && /^\d+$/.test(rawSurveyId) ? Number(rawSurveyId) : rawSurveyId;
+
+      // Yeni oluşturulduysa soruları yaz (güncellemede kopya oluşmasını engeller)
+      if (createdNew && formData.questions.length > 0) {
+        const payloads: UpsertQuestionRequest[] = await Promise.all(
+          formData.questions.map(async (q, index) => {
+            const titleTrim = (q.title || '').trim();
+            const placeholderTrim = (q.placeholder || '').trim();
+            const questionsText = titleTrim ? titleTrim : (placeholderTrim || 'Yeni Soru');
+            let questionTypeId = 1;
+            try { questionTypeId = await getQuestionTypeIdByFrontendType(q.type); } catch {}
+            return {
+              questionsText,
+              questionType: q.type,
+              questionTypeId,
+              choices: q.options || [],
+              surveysId: surveyId,
+              isRequired: q.required,
+              order: index + 1
+            };
+          })
+        );
+        await Promise.all(payloads.map(p => questionService.create(p)));
+      }
+
+      const link = `${window.location.origin}/survey/${surveyId}`;
+      return link;
+    } catch (e) {
+      console.error('Yayınlama hatası:', e);
+      alert('Yayınlama sırasında hata oluştu.');
+      return null;
+    }
+  };
+
   // const handleImageUpload = (file: File) => {
   //   const reader = new FileReader();
   //   reader.onload = (e) => {
@@ -580,6 +732,15 @@ const FormBuilder: React.FC = () => {
               >
                 <Settings className="w-4 h-4" />
                 <span>Ayarlar</span>
+              </motion.button>
+              
+              <motion.button
+                onClick={() => setShowPublishModal(true)}
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition-all duration-300"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Yayınla
               </motion.button>
               
               <motion.button
@@ -1151,7 +1312,148 @@ const FormBuilder: React.FC = () => {
         </div>
       </main>
 
+      {/* Publish Modal */}
+      <AnimatePresence>
+        {showPublishModal && (
+          <motion.div
+            className="fixed inset-0 bg-black/70 backdrop-blur-xl flex items-center justify-center z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-white/10 backdrop-blur-xl rounded-3xl p-6 max-w-lg w-full mx-4 border border-white/20"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            >
+              <h3 className="text-2xl font-semibold text-white mb-6">Formu yayınlayın</h3>
+              <div className="space-y-4">
+                <div>
+                  <div className="text-blue-200 mb-1">Katılımcılar</div>
+                  <div className="text-white">Bağlantıya sahip olan herkes</div>
+                </div>
+                {publishedLink && (
+                  <div className="bg-white/5 border border-white/20 rounded-xl p-3 text-blue-200 break-all flex items-center justify-between">
+                    <span className="truncate mr-3">{publishedLink}</span>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(publishedLink);
+                          setCopyInfo('Kopyalandı');
+                          setTimeout(() => setCopyInfo(null), 2000);
+                        } catch {}
+                      }}
+                      className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm"
+                    >
+                      {copyInfo || 'Kopyala'}
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end space-x-3 mt-6">
+                <motion.button
+                  onClick={() => setShowPublishModal(false)}
+                  className="px-5 py-2 text-blue-300 hover:text-white transition-colors"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Kapat
+                </motion.button>
+                <motion.button
+                  onClick={async () => {
+                    setPublishedLink(null);
+                    setIsPublishing(true);
+                    const link = await handlePublishInternal();
+                    if (link) setPublishedLink(link);
+                    setIsPublishing(false);
+                  }}
+                  disabled={isPublishing}
+                  className="px-5 py-2 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-xl disabled:opacity-50"
+                  whileHover={{ scale: isPublishing ? 1 : 1.05 }}
+                  whileTap={{ scale: isPublishing ? 1 : 0.95 }}
+                >
+                  {isPublishing ? 'Yayınlanıyor...' : 'Yayınla'}
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
+      {/* Access Manager Modal */}
+      <AnimatePresence>
+        {showAccessManager && (
+          <motion.div
+            className="fixed inset-0 bg-black/70 backdrop-blur-xl flex items-center justify-center z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-white/10 backdrop-blur-xl rounded-3xl p-6 max-w-2xl w-full mx-4 border border-white/20"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            >
+              <h3 className="text-2xl font-semibold text-white mb-6">"{formData.title || 'Başlıksız form'}" adlı öğeyi paylaş</h3>
+
+              {/* Editor visibility */}
+              <div className="bg-white/5 border border-white/20 rounded-2xl p-4 mb-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Lock className="w-5 h-5 text-blue-300" />
+                    <div>
+                      <div className="text-white font-medium">Düzenleyici görünümü</div>
+                      <div className="text-blue-200 text-sm">Yalnızca erişimi olan kişiler bu bağlantıyı kullanarak açabilir</div>
+                    </div>
+                  </div>
+                  <select
+                    value={editorVisibility}
+                    onChange={(e) => setEditorVisibility(e.target.value as 'restricted' | 'anyone')}
+                    className="bg-white/10 text-white border border-white/20 rounded-xl px-3 py-2"
+                  >
+                    <option value="restricted">Kısıtlanmış</option>
+                    <option value="anyone">Herkes</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Participant visibility */}
+              <div className="bg-white/5 border border-white/20 rounded-2xl p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Globe className="w-5 h-5 text-green-300" />
+                    <div>
+                      <div className="text-white font-medium">Katılımcı görünümü</div>
+                      <div className="text-blue-200 text-sm">Bu bağlantıya sahip her internet kullanıcısı yanıt verebilir</div>
+                    </div>
+                  </div>
+                  <select
+                    value={participantVisibility}
+                    onChange={(e) => setParticipantVisibility(e.target.value as 'link' | 'signedin')}
+                    className="bg-white/10 text-white border border-white/20 rounded-xl px-3 py-2"
+                  >
+                    <option value="link">Bağlantıya sahip olan herkes</option>
+                    <option value="signedin">Giriş yapan kullanıcılar</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <motion.button
+                  onClick={() => setShowAccessManager(false)}
+                  className="px-5 py-2 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-xl"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Bitti
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Image Upload Modal */}
       <AnimatePresence>

@@ -777,6 +777,8 @@ function App() {
             </ProtectedRoute>
           }
         />
+        {/* Public answering route */}
+        <Route path="/survey/:id" element={<FormResponse />} />
         <Route
           path="/settings"
           element={

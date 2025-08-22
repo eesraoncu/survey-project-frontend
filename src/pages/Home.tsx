@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -14,7 +14,9 @@ import {
   Gift,
   Shirt,
   Building,
-  Grid3X3
+  Grid3X3,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { surveyService, type Survey } from '../services/surveyService';
@@ -356,6 +358,10 @@ const Home: React.FC = () => {
   ];
 
   const [recentSurveys, setRecentSurveys] = useState<Survey[]>([]);
+  const [allOwnedSurveys, setAllOwnedSurveys] = useState<Survey[]>([]);
+  const [selectedRange, setSelectedRange] = useState<'all' | '7' | '30'>('all');
+  const [currentPage, setCurrentPage] = useState<number>(0);
+  const pageSize = 4;
   const { user } = useAuth();
 
   // Son anketleri yükle
@@ -398,15 +404,44 @@ const Home: React.FC = () => {
           const db = new Date((b as any).createdAt || (b as any).created_at || 0).getTime();
           return db - da;
         });
-        const last4 = sorted.slice(0, 4);
-        console.log('[Home] last4 ids =', last4.map((s: any) => s.id ?? s._id));
-        setRecentSurveys(last4);
+        setAllOwnedSurveys(sorted);
       } catch (error) {
         console.error('Error loading recent surveys:', error);
       }
     };
     loadRecentSurveys();
   }, [user]);
+
+  // Filtre ve sayfalama hesapları
+  const filteredSurveys = useMemo(() => {
+    let list = allOwnedSurveys;
+    if (selectedRange !== 'all') {
+      const days = selectedRange === '7' ? 7 : 30;
+      const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+      list = list.filter((s: any) => {
+        const ts = new Date((s as any).createdAt || (s as any).created_at || 0).getTime();
+        return ts >= cutoff;
+      });
+    }
+    return list;
+  }, [allOwnedSurveys, selectedRange]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredSurveys.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages - 1);
+  const visibleSurveys = useMemo(
+    () => filteredSurveys.slice(safePage * pageSize, safePage * pageSize + pageSize),
+    [filteredSurveys, safePage]
+  );
+
+  useEffect(() => {
+    // Görünenleri state'e yansıt (mevcut render akışını fazla bozmamak için)
+    setRecentSurveys(visibleSurveys);
+  }, [visibleSurveys]);
+
+  useEffect(() => {
+    // Filtre değişince başa dön
+    setCurrentPage(0);
+  }, [selectedRange, allOwnedSurveys.length]);
 
   // Particle system for background
   useEffect(() => {
@@ -500,7 +535,12 @@ const Home: React.FC = () => {
       
       // Başarılı olursa form builder sayfasına yönlendir
       console.log('🔄 FormBuilder\'a yönlendiriliyor...');
-      navigate('/form-builder');
+      // Eğer backend id döndürdüyse düzenlemeye onunla git
+      if (generatedSurvey?.id) {
+        navigate(`/form-builder?surveyId=${generatedSurvey.id}`);
+      } else {
+        navigate('/form-builder');
+      }
       
       // Modal'ı kapat
       setShowAIModal(false);
@@ -865,26 +905,36 @@ const Home: React.FC = () => {
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-3xl font-bold text-white">Son Formlar</h2>
               <div className="flex items-center space-x-4">
-                <select className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white focus:ring-2 focus:ring-purple-400 focus:border-transparent backdrop-blur-xl">
-                  <option className="bg-slate-800">Tümü</option>
-                  <option className="bg-slate-800">Son 7 gün</option>
-                  <option className="bg-slate-800">Son 30 gün</option>
+                <select
+                  value={selectedRange}
+                  onChange={(e) => setSelectedRange(e.target.value as any)}
+                  className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white focus:ring-2 focus:ring-purple-400 focus:border-transparent backdrop-blur-xl"
+                >
+                  <option value="all" className="bg-slate-800">Tümü</option>
+                  <option value="7" className="bg-slate-800">Son 7 gün</option>
+                  <option value="30" className="bg-slate-800">Son 30 gün</option>
                 </select>
                 
+                {/* Pager */}
                 <div className="flex items-center bg-white/10 rounded-xl p-1 border border-white/20">
                   <motion.button
-                    className="p-2 rounded-lg text-purple-300 hover:text-white hover:bg-white/10 transition-colors"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                    disabled={safePage === 0}
+                    className={`p-2 rounded-lg ${safePage === 0 ? 'text-purple-400/40' : 'text-purple-300 hover:text-white hover:bg-white/10 transition-colors'}`}
+                    whileHover={{ scale: safePage === 0 ? 1 : 1.1 }}
+                    whileTap={{ scale: safePage === 0 ? 1 : 0.9 }}
                   >
-                    <Grid3X3 className="w-5 h-5" />
+                    <ChevronLeft className="w-5 h-5" />
                   </motion.button>
+                  <div className="px-2 text-purple-300 text-sm select-none">{safePage + 1}/{totalPages}</div>
                   <motion.button
-                    className="p-2 rounded-lg text-purple-300 hover:text-white hover:bg-white/10 transition-colors"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                    disabled={safePage >= totalPages - 1}
+                    className={`p-2 rounded-lg ${safePage >= totalPages - 1 ? 'text-purple-400/40' : 'text-purple-300 hover:text-white hover:bg-white/10 transition-colors'}`}
+                    whileHover={{ scale: safePage >= totalPages - 1 ? 1 : 1.1 }}
+                    whileTap={{ scale: safePage >= totalPages - 1 ? 1 : 0.9 }}
                   >
-                    <BarChart3 className="w-5 h-5" />
+                    <ChevronRight className="w-5 h-5" />
                   </motion.button>
                 </div>
               </div>
@@ -905,7 +955,7 @@ const Home: React.FC = () => {
                   transition={{ type: "spring", stiffness: 300 }}
                   onMouseEnter={() => setHoveredSurvey(survey.id.toString())}
                   onMouseLeave={() => setHoveredSurvey(null)}
-                  onClick={() => navigate('/form-builder')}
+                  onClick={() => navigate(`/form-builder?surveyId=${survey.id}`)}
                 >
                   <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 border border-white/20 overflow-hidden">
                     {/* AI Score Badge */}

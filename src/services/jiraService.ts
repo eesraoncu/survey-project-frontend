@@ -21,7 +21,7 @@ export const getJiraAuthUrl = (): string => {
   const params = new URLSearchParams({
     client_id: JIRA_CLIENT_ID,
     redirect_uri: JIRA_REDIRECT_URI,
-    scope: 'read:jira-user read:jira-work write:jira-work read:servicedesk-request write:servicedesk-request',
+    scope: 'read:me read:jira-user read:jira-work write:jira-work read:servicedesk-request write:servicedesk-request',
     response_type: 'code', // Jira code flow kullanıyor
     state: Math.random().toString(36).substring(7), // CSRF koruması için
     prompt: 'consent' // Her zaman izin iste
@@ -49,6 +49,20 @@ export const getJiraCode = (): string | null => {
   return code
 }
 
+// OAuth state parametresini URL'den al
+export const getJiraState = (): string | null => {
+  const urlParams = new URLSearchParams(window.location.search)
+  let state = urlParams.get('state')
+
+  if (!state) {
+    const hash = window.location.hash.substring(1)
+    const hashParams = new URLSearchParams(hash)
+    state = hashParams.get('state')
+  }
+
+  return state
+}
+
 // Backend'e Jira login isteği gönder
 export const loginWithJira = async (jiraCode: string): Promise<JiraLoginResponse> => {
   try {
@@ -60,7 +74,10 @@ export const loginWithJira = async (jiraCode: string): Promise<JiraLoginResponse
       throw new Error('Jira authorization code boş!')
     }
     
-    const requestBody = { code: jiraCode }
+    const state = getJiraState()
+    console.log('State received in loginWithJira:', state)
+
+    const requestBody = { code: jiraCode, state }
     console.log('Sending request body:', requestBody)
     
     const response = await apiClient.post<JiraLoginResponse>('/Auth/jira-callback', requestBody)

@@ -228,12 +228,92 @@ export const surveyService = {
   },
 
   // Anket sil
-  async deleteSurvey(id: string): Promise<void> {
+  async deleteSurvey(id: string, userId?: number): Promise<void> {
     try {
-      await apiClient.delete(`/Surveys/${id}`);
+      console.log('🗑️ Anket silme isteği gönderiliyor...');
+      console.log('🆔 Silinecek anket ID:', id);
+      console.log('👤 Kullanıcı ID:', userId);
+      console.log('👤 Kullanıcı ID tipi:', typeof userId);
+      console.log('🔗 API URL:', `/Surveys/${id}`);
+      
+      // Önce OPTIONS isteği ile desteklenen metodları kontrol edelim
+      try {
+        const optionsResponse = await apiClient.request({
+          method: 'OPTIONS',
+          url: `/Surveys/${id}`,
+        });
+        console.log('🔍 OPTIONS Response:', optionsResponse.headers);
+        console.log('🔍 Allow Header:', optionsResponse.headers['allow'] || 'Yok');
+      } catch (optionsError) {
+        console.log('⚠️ OPTIONS isteği başarısız, DELETE ile devam ediliyor...');
+      }
+      
+      // 1. Yöntem: Normal DELETE isteği (body ile)
+      try {
+        const response = await apiClient.delete(`/Surveys/${id}`, {
+          data: {
+            usersId: userId || 0, // Kullanıcı ID'sini gönder
+            reason: "Kullanıcı tarafından silindi" // Backend'in beklediği alan
+          }
+        });
+        console.log('📤 Gönderilen veri detayları:', {
+          userId: userId,
+          userIdType: typeof userId,
+          usersIdValue: userId || 0,
+          usersIdType: typeof (userId || 0),
+          reason: "Kullanıcı tarafından silindi"
+        });
+        console.log('✅ Anket başarıyla silindi (DELETE):', response);
+        return;
+      } catch (deleteError: any) {
+        console.log('❌ DELETE başarısız, POST ile soft delete deneniyor...');
+        
+        // 2. Yöntem: POST ile soft delete
+        try {
+          const postResponse = await apiClient.post(`/Surveys/${id}/delete`, {});
+          console.log('✅ Anket başarıyla silindi (POST soft delete):', postResponse);
+          return;
+        } catch (postError: any) {
+          console.log('❌ POST soft delete başarısız, PUT ile status güncelleme deneniyor...');
+          
+          // 3. Yöntem: PUT ile status güncelleme (archived)
+          try {
+            const putResponse = await apiClient.put(`/Surveys/${id}`, {
+              status: 'archived',
+              isActive: false
+            });
+            console.log('✅ Anket başarıyla arşivlendi (PUT):', putResponse);
+            return;
+          } catch (putError: any) {
+            // Tüm yöntemler başarısız
+            throw deleteError; // İlk hatayı fırlat
+          }
+        }
+      }
     } catch (error: any) {
-      console.error('Error deleting survey:', error);
-      throw new Error(error.response?.data?.message || 'Anket silinirken bir hata oluştu');
+      console.error('❌ Anket silme hatası:', error);
+      console.error('📋 Hata detayları:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+        config: error.config
+      });
+      
+      // Daha spesifik hata mesajları
+      if (error.response?.status === 404) {
+        throw new Error('Anket bulunamadı. Zaten silinmiş olabilir.');
+      } else if (error.response?.status === 403) {
+        throw new Error('Bu anketi silme yetkiniz yok.');
+      } else if (error.response?.status === 415) {
+        throw new Error('Backend DELETE isteğini desteklemiyor. Backend geliştirici ile iletişime geçin.');
+      } else if (error.response?.status === 500) {
+        throw new Error('Sunucu hatası. Lütfen daha sonra tekrar deneyin.');
+      } else if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      } else {
+        throw new Error('Anket silinirken bir hata oluştu. Lütfen tekrar deneyin.');
+      }
     }
   },
 

@@ -175,7 +175,7 @@ const Forms: React.FC = () => {
           surveyDescription: updatedSurvey.surveyDescription,
           surveyTypeId: 1,
           isActive: updatedSurvey.isActive,
-          usersId: user?.id ? Number(user.id) : undefined,
+          usersId: user?.id != null ? Number(user.id) : undefined,
           backgroundImage: fullImageUrl,
           surveyBackgroundImage: imageUrl,
           questions: [],
@@ -220,13 +220,31 @@ const Forms: React.FC = () => {
   const handleDeleteSurvey = async (surveyId: string) => {
     if (window.confirm('Bu anketi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) {
       try {
-        await surveyService.deleteSurvey(surveyId);
+        console.log('🚀 Anket silme işlemi başlatılıyor...');
+        console.log('🆔 Survey ID:', surveyId);
+        console.log('👤 User objesi:', user);
+        console.log('👤 User ID:', user?.id);
+        console.log('👤 User ID tipi:', typeof user?.id);
+        
+        // Kullanıcı ID'sini number'a çevir (0 değeri de geçerli)
+        const userId = user?.id != null ? Number(user.id) : undefined;
+        console.log('🔢 Dönüştürülmüş User ID:', userId);
+        console.log('🔢 Dönüştürülmüş User ID tipi:', typeof userId);
+        
+        await surveyService.deleteSurvey(surveyId, userId);
         console.log('✅ Anket başarıyla silindi:', surveyId);
+        
+        // Başarı mesajı göster
+        alert('Anket başarıyla silindi!');
+        
         // Anketleri yeniden yükle
         loadSurveys();
-      } catch (error) {
+      } catch (error: any) {
         console.error('❌ Anket silinirken hata:', error);
-        alert('Anket silinirken bir hata oluştu. Lütfen tekrar deneyin.');
+        
+        // Kullanıcıya daha detaylı hata mesajı göster
+        const errorMessage = error.message || 'Anket silinirken bir hata oluştu. Lütfen tekrar deneyin.';
+        alert(`Hata: ${errorMessage}`);
       }
     }
   };

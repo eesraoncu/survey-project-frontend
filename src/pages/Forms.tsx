@@ -6,7 +6,6 @@ import {
   Search, 
   Grid3X3, 
   List, 
-  MoreVertical,
   Image as ImageIcon,
   FileText,
   Edit,
@@ -18,14 +17,15 @@ import {
 } from 'lucide-react';
 import { surveyService, type Survey } from '../services/surveyService';
 import { useAuth } from '../contexts/AuthContext';
+import { uploadService } from '../services/uploadService';
 
 const Forms: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showImageUpload, setShowImageUpload] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<'date' | 'responses' | 'views'>('date');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadMessage, setUploadMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   
   // Backend'den gelen veriler için state'ler
   const [surveys, setSurveys] = useState<Survey[]>([]);
@@ -69,8 +69,19 @@ const Forms: React.FC = () => {
         if (idx < 10) console.log('[Forms][final-filter] item', idx, 'owner:', owner, 'match:', ok)
         return ok
       })
-      console.log('📊 (Forms) Nihai sahip filtre sayısı:', owned.length)
-      setSurveys(owned)
+             console.log('📊 (Forms) Nihai sahip filtre sayısı:', owned.length)
+       
+       // Resim URL'lerini kontrol et
+       owned.forEach((survey, index) => {
+         console.log(`📸 Survey ${index + 1} (${survey.id}):`, {
+           surveyName: survey.surveyName,
+           backgroundImage: survey.backgroundImage,
+           surveyBackgroundImage: survey.surveyBackgroundImage, 
+           fullUrl: survey.backgroundImage || (survey.surveyBackgroundImage ? `http://localhost:5000${survey.surveyBackgroundImage}` : '')
+         });
+       });
+       
+       setSurveys(owned)
     } catch (err: any) {
       console.error('❌ Anketler yüklenirken hata:', err);
       setError(err.message || 'Anketler yüklenirken bir hata oluştu');
@@ -83,29 +94,155 @@ const Forms: React.FC = () => {
     loadSurveys();
   };
 
-  const categories = ['Tümü', 'Ürün', 'Müşteri', 'İnsan Kaynakları', 'Eğitim', 'Pazarlama', 'Teknoloji'];
+  const handleImageUpload = async (file: File, surveyId: string) => {
+    console.log('🚀 handleImageUpload fonksiyonu başlatıldı');
+    console.log('📁 Gelen dosya:', file);
+    console.log('🆔 Survey ID:', surveyId);
+    
+    try {
+      console.log('⏳ Yükleme durumu ayarlanıyor...');
+      setIsUploadingImage(true);
+      setUploadProgress(0);
+      setUploadMessage(null);
+      
+      console.log('📁 Seçilen dosya bilgileri:', {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: new Date(file.lastModified).toLocaleString()
+      });
+      
+      // Dosya boyutu kontrolü (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        setUploadMessage({ type: 'error', message: 'Dosya boyutu 5MB\'dan küçük olmalıdır' });
+        return;
+      }
+
+      // Dosya tipi kontrolü - daha detaylı
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      const fileExtension = file.name.toLowerCase().split('.').pop();
+      const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+      
+      console.log('🔍 Dosya format kontrolü:', {
+        mimeType: file.type,
+        extension: fileExtension,
+        isAllowedMimeType: allowedTypes.includes(file.type),
+        isAllowedExtension: allowedExtensions.includes(fileExtension || '')
+      });
+      
+      if (!allowedTypes.includes(file.type) || !allowedExtensions.includes(fileExtension || '')) {
+        setUploadMessage({ 
+          type: 'error', 
+          message: `Geçersiz dosya formatı. Sadece JPG, PNG, GIF ve WebP dosyaları kabul edilir. Seçilen dosya: ${file.name}` 
+        });
+        return;
+      }
+
+      // Progress simülasyonu
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 100);
+
+      // Resmi sunucuya yükle
+      const imageUrl = await uploadService.uploadBackgroundImage(file);
+      
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      // Relative URL'yi tam URL'ye çevir
+      const fullImageUrl = `http://localhost:5000${imageUrl}`;
+      console.log('✅ Backend\'den gelen resim URL:', imageUrl);
+      console.log('🔗 Tam resim URL:', fullImageUrl);
+
+      // Anketi güncelle
+      const surveyToUpdate = surveys.find(s => s.id === surveyId);
+      if (surveyToUpdate) {
+        const updatedSurvey = {
+          ...surveyToUpdate,
+          backgroundImage: fullImageUrl,
+          surveyBackgroundImage: imageUrl
+        };
+        
+        // Backend'e güncelleme gönder
+        await surveyService.updateSurvey(surveyId, {
+          surveyName: updatedSurvey.surveyName,
+          surveyDescription: updatedSurvey.surveyDescription,
+          surveyTypeId: 1,
+          isActive: updatedSurvey.isActive,
+          usersId: user?.id ? Number(user.id) : undefined,
+          backgroundImage: fullImageUrl,
+          surveyBackgroundImage: imageUrl,
+          questions: [],
+          settings: (updatedSurvey as any).settings || {},
+          status: updatedSurvey.status || 'draft',
+          category: updatedSurvey.category || 'Genel',
+          tags: updatedSurvey.tags || []
+        });
+        
+        // Local state'i güncelle
+        setSurveys(prev => prev.map(s => 
+          s.id === surveyId 
+            ? { ...s, backgroundImage: fullImageUrl, surveyBackgroundImage: imageUrl }
+            : s
+        ));
+      }
+      
+      setUploadMessage({ type: 'success', message: 'Anket resmi başarıyla yüklendi!' });
+      setShowImageUpload(null);
+      
+      // 3 saniye sonra mesajı kaldır
+      setTimeout(() => setUploadMessage(null), 3000);
+      
+    } catch (error) {
+      console.error('❌ Forms - Resim yükleme hatası:', error);
+      console.error('📋 Hata detayları:', {
+        error: error,
+        message: error instanceof Error ? error.message : 'Bilinmeyen hata',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
+      setUploadMessage({ 
+        type: 'error', 
+        message: error instanceof Error ? error.message : 'Resim yüklenirken bir hata oluştu' 
+      });
+    } finally {
+      setIsUploadingImage(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const handleDeleteSurvey = async (surveyId: string) => {
+    if (window.confirm('Bu anketi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) {
+      try {
+        await surveyService.deleteSurvey(surveyId);
+        console.log('✅ Anket başarıyla silindi:', surveyId);
+        // Anketleri yeniden yükle
+        loadSurveys();
+      } catch (error) {
+        console.error('❌ Anket silinirken hata:', error);
+        alert('Anket silinirken bir hata oluştu. Lütfen tekrar deneyin.');
+      }
+    }
+  };
 
   const filteredSurveys = surveys.filter(survey => {
     const matchesSearch = survey.surveyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          survey.surveyDescription.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (survey.tags && survey.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())));
-    const matchesStatus = selectedStatus === 'all' || survey.status === selectedStatus;
-    const matchesCategory = selectedCategory === 'all' || survey.category === selectedCategory;
-    return matchesSearch && matchesStatus && matchesCategory;
+    return matchesSearch;
   });
 
   const sortedSurveys = [...filteredSurveys].sort((a, b) => {
-    switch (sortBy) {
-      case 'responses': return (b.responses || 0) - (a.responses || 0);
-      case 'views': return (b.views || 0) - (a.views || 0);
-      default: return new Date(b.lastModified || b.createdAt).getTime() - new Date(a.lastModified || a.createdAt).getTime();
-    }
+    return new Date(b.lastModified || b.createdAt).getTime() - new Date(a.lastModified || a.createdAt).getTime();
   });
 
-  const handleImageUpload = (surveyId: string, file: File) => {
-    console.log(`Uploading image for survey ${surveyId}:`, file);
-    setShowImageUpload(null);
-  };
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -202,7 +339,7 @@ const Forms: React.FC = () => {
         {/* Filters and Search */}
         <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-6 mb-8">
           <div className="flex flex-col lg:flex-row gap-6 items-center justify-between">
-            <div className="flex-1 max-w-md">
+            <div className="flex-1">
               <motion.div 
                 className="relative"
                 whileFocus={{ scale: 1.02 }}
@@ -219,39 +356,6 @@ const Forms: React.FC = () => {
             </div>
             
             <div className="flex items-center space-x-4">
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-400 focus:border-transparent backdrop-blur-xl"
-              >
-                {categories.map(category => (
-                  <option key={category} value={category} className="bg-slate-800">
-                    {category}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-400 focus:border-transparent backdrop-blur-xl"
-              >
-                <option value="all">Tüm Durumlar</option>
-                <option value="active">Aktif</option>
-                <option value="draft">Taslak</option>
-                <option value="archived">Arşivlenmiş</option>
-              </select>
-
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-400 focus:border-transparent backdrop-blur-xl"
-              >
-                <option value="date">Tarihe Göre</option>
-                <option value="responses">Yanıt Sayısına Göre</option>
-                <option value="views">Görüntü Sayısına Göre</option>
-              </select>
-              
               <div className="flex items-center bg-white/10 rounded-2xl p-1 border border-white/20">
                 <motion.button
                   onClick={() => setViewMode('grid')}
@@ -340,11 +444,24 @@ const Forms: React.FC = () => {
                   <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-xl hover:shadow-2xl border border-white/20 overflow-hidden relative">
                     {/* Background Image or Placeholder */}
                     <div className="relative h-40 bg-gradient-to-br from-purple-100/20 to-blue-100/20 overflow-hidden">
-                      {survey.backgroundImage ? (
+                      {survey.backgroundImage || survey.surveyBackgroundImage ? (
                         <img
-                          src={survey.backgroundImage}
+                          src={survey.backgroundImage || (survey.surveyBackgroundImage ? `http://localhost:5000${survey.surveyBackgroundImage}` : '')}
                           alt={survey.surveyName}
                           className="w-full h-full object-cover"
+                          onLoad={(e) => {
+                            console.log('✅ Resim başarıyla yüklendi:', e.currentTarget.src);
+                          }}
+                          onError={(e) => {
+                            console.error('❌ Resim yüklenemedi:', survey.backgroundImage || survey.surveyBackgroundImage);
+                            console.error('🔗 Denenen URL:', survey.backgroundImage || (survey.surveyBackgroundImage ? `http://localhost:5000${survey.surveyBackgroundImage}` : ''));
+                            console.error('📊 Survey verisi:', {
+                              id: survey.id,
+                              backgroundImage: survey.backgroundImage,
+                              surveyBackgroundImage: survey.surveyBackgroundImage
+                            });
+                            e.currentTarget.style.display = 'none';
+                          }}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
@@ -397,12 +514,41 @@ const Forms: React.FC = () => {
                             ))}
                           </div>
                         </div>
-                        <motion.button 
-                          className="p-2 hover:bg-white/10 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 text-purple-300 hover:text-white"
-                          whileHover={{ scale: 1.1, rotate: 5 }}
-                        >
-                          <MoreVertical className="w-5 h-5" />
-                        </motion.button>
+                        <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                          <motion.button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/forms/${survey.id}`);
+                            }}
+                            className="p-2 hover:bg-white/10 rounded-xl text-purple-300 hover:text-white transition-colors"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </motion.button>
+                          <motion.button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/form-builder/${survey.id}`);
+                            }}
+                            className="p-2 hover:bg-white/10 rounded-xl text-blue-400 hover:text-blue-200 transition-colors"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </motion.button>
+                          <motion.button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteSurvey(survey.id);
+                            }}
+                            className="p-2 hover:bg-white/10 rounded-xl text-red-400 hover:text-red-200 transition-colors"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </motion.button>
+                        </div>
                       </div>
 
                       {/* Statistics */}
@@ -497,6 +643,7 @@ const Forms: React.FC = () => {
                               <Eye className="w-4 h-4" />
                             </motion.button>
                             <motion.button 
+                              onClick={() => navigate(`/form-builder/${survey.id}`)}
                               className="text-blue-400 hover:text-blue-200 transition-colors"
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
@@ -504,6 +651,7 @@ const Forms: React.FC = () => {
                               <Edit className="w-4 h-4" />
                             </motion.button>
                             <motion.button 
+                              onClick={() => handleDeleteSurvey(survey.id)}
                               className="text-red-400 hover:text-red-200 transition-colors"
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
@@ -522,51 +670,112 @@ const Forms: React.FC = () => {
         </AnimatePresence>
 
         {/* Image Upload Modal */}
-        {showImageUpload && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-50">
+        <AnimatePresence>
+          {showImageUpload && (
             <motion.div 
-              className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full mx-4 border border-white/20"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
+              className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
             >
-              <h3 className="text-2xl font-semibold text-white mb-6 text-center">Arkaplan Resmi Yükle</h3>
-              <div className="border-2 border-dashed border-purple-400/50 rounded-2xl p-8 text-center">
-                <Upload className="w-16 h-16 text-purple-400 mx-auto mb-4" />
-                <p className="text-purple-200 mb-6">Resim dosyasını buraya sürükleyin veya seçin</p>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      handleImageUpload(showImageUpload, file);
-                    }
-                  }}
-                  className="hidden"
-                  id="image-upload"
-                />
-                <label
-                  htmlFor="image-upload"
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-6 py-3 rounded-2xl cursor-pointer transition-all duration-300 shadow-xl hover:shadow-2xl inline-flex items-center space-x-2"
-                >
-                  <ImageIcon className="w-5 h-5" />
-                  <span>Resim Seç</span>
-                </label>
-              </div>
-              <div className="flex justify-end mt-6">
-                <motion.button
-                  onClick={() => setShowImageUpload(null)}
-                  className="px-6 py-3 text-purple-300 hover:text-white transition-colors"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  İptal
-                </motion.button>
-              </div>
+              <motion.div 
+                className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full mx-4 border border-white/20"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+              >
+                <h3 className="text-2xl font-semibold text-white mb-2 text-center">Anket Resmi Yükle</h3>
+                <p className="text-purple-200 text-center mb-6">Anketinizin görsel kimliğini belirlemek için bir resim seçin</p>
+                
+                {/* Upload Message */}
+                {uploadMessage && (
+                  <motion.div 
+                    className={`py-3 px-4 rounded-lg mb-4 flex items-center space-x-2 ${
+                      uploadMessage.type === 'success' 
+                        ? 'bg-green-500/20 border border-green-500/30' 
+                        : 'bg-red-500/20 border border-red-500/30'
+                    }`}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    {uploadMessage.type === 'success' ? (
+                      <div className="w-5 h-5 bg-green-400 rounded-full flex items-center justify-center">
+                        <div className="w-2 h-2 bg-white rounded-full"></div>
+                      </div>
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-red-400" />
+                    )}
+                    <span className={`text-sm ${
+                      uploadMessage.type === 'success' ? 'text-green-300' : 'text-red-300'
+                    }`}>
+                      {uploadMessage.message}
+                    </span>
+                  </motion.div>
+                )}
+                
+                <div className="border-2 border-dashed border-purple-400/50 rounded-2xl p-8 text-center">
+                  {isUploadingImage ? (
+                    <div className="space-y-4">
+                      <div className="w-16 h-16 border-4 border-purple-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                      <p className="text-purple-200">Anket resmi yükleniyor...</p>
+                      <div className="w-full bg-white/20 rounded-full h-2">
+                        <div 
+                          className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${uploadProgress}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-purple-300 text-sm">{uploadProgress}%</p>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="w-16 h-16 text-purple-400 mx-auto mb-4" />
+                      <p className="text-purple-200 mb-2">Anket resmi dosyasını buraya sürükleyin</p>
+                      <p className="text-purple-300 text-sm mb-6">veya aşağıdaki butona tıklayarak seçin</p>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      console.log('🖱️ Dosya seçimi tetiklendi');
+                      const file = e.target.files?.[0];
+                      console.log('📁 Seçilen dosya:', file);
+                      
+                      if (file) {
+                        console.log('✅ Dosya bulundu, yükleme başlatılıyor...');
+                        handleImageUpload(file, showImageUpload);
+                      }
+                    }}
+                    className="hidden"
+                    id="image-upload"
+                    disabled={isUploadingImage}
+                  />
+                  <label
+                    htmlFor="image-upload"
+                    className={`px-6 py-3 rounded-2xl transition-all duration-300 shadow-xl inline-flex items-center space-x-2 ${
+                      isUploadingImage 
+                        ? 'bg-gray-500 text-gray-300 cursor-not-allowed' 
+                        : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white cursor-pointer hover:shadow-2xl'
+                    }`}
+                  >
+                    <ImageIcon className="w-5 h-5" />
+                    <span>{isUploadingImage ? 'Yükleniyor...' : 'Resim Seç'}</span>
+                  </label>
+                </div>
+                <div className="flex justify-end mt-6">
+                  <motion.button
+                    onClick={() => setShowImageUpload(null)}
+                    className="px-6 py-3 text-purple-300 hover:text-white transition-colors"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    İptal
+                  </motion.button>
+                </div>
+              </motion.div>
             </motion.div>
-          </div>
-        )}
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { 
   Plus, 
   Save, 
@@ -31,6 +31,7 @@ import { surveyService, type FormData as SurveyFormData } from '../services/surv
 import { useAuth } from '../contexts/AuthContext';
 import { questionService, type UpsertQuestionRequest } from '../services/questionService';
 import { getQuestionTypeIdByFrontendType } from '../services/questionTypeService';
+import { uploadService } from '../services/uploadService';
 import { ThumbsUp } from 'lucide-react';
 
 interface Question {
@@ -51,6 +52,7 @@ interface FormData {
   title: string;
   description: string;
   backgroundImage?: string;
+  surveyBackgroundImage?: string;
   questions: Question[];
   settings: {
     allowAnonymous: boolean;
@@ -65,11 +67,13 @@ interface FormData {
 
 const FormBuilder: React.FC = () => {
   const navigate = useNavigate();
+  const { id: routeSurveyId } = useParams<{ id: string }>();
   const { user } = useAuth();
   const [formData, setFormData] = useState<FormData>({
     title: '',
     description: '',
     backgroundImage: '',
+    surveyBackgroundImage: '',
     questions: [],
     settings: {
       allowAnonymous: true,
@@ -84,6 +88,8 @@ const FormBuilder: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'builder' | 'preview' | 'settings'>('builder');
   const [showImageUpload, setShowImageUpload] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   // const [draggedQuestion, setDraggedQuestion] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null);
@@ -100,8 +106,7 @@ const FormBuilder: React.FC = () => {
   // Mevcut anketi yükle (surveyId varsa) ve AI/Template verilerini yükle
   useEffect(() => {
     console.log('🔍 FormBuilder başladı, veriler kontrol ediliyor...');
-    const params = new URLSearchParams(window.location.search);
-    const existingSurveyId = params.get('surveyId');
+    console.log('🔍 Route parametresi surveyId:', routeSurveyId);
 
     const loadExisting = async (surveyId: string) => {
       try {
@@ -123,6 +128,7 @@ const FormBuilder: React.FC = () => {
           title: survey.surveyName || '',
           description: survey.surveyDescription || '',
           backgroundImage: survey.backgroundImage || '',
+          surveyBackgroundImage: survey.surveyBackgroundImage || '',
           questions: mappedQuestions,
           settings: survey.settings || {
             allowAnonymous: true,
@@ -145,8 +151,8 @@ const FormBuilder: React.FC = () => {
     };
     
     // Eğer mevcut anket ID'si varsa önce onu yükle, yoksa template/AI verilerine bak
-    if (existingSurveyId) {
-      void loadExisting(existingSurveyId);
+    if (routeSurveyId) {
+      void loadExisting(routeSurveyId);
       return;
     }
 
@@ -363,6 +369,98 @@ const FormBuilder: React.FC = () => {
     }));
   };
 
+  // Resim yükleme fonksiyonu
+  const handleImageUpload = async (file: File) => {
+    try {
+      setIsUploadingImage(true);
+      setUploadProgress(0);
+      
+      console.log('📁 Seçilen dosya bilgileri:', {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: new Date(file.lastModified).toLocaleString()
+      });
+      
+      // Dosya boyutu kontrolü (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        setSaveMessage({ type: 'error', message: 'Dosya boyutu 5MB\'dan küçük olmalıdır' });
+        return;
+      }
+
+      // Dosya tipi kontrolü - daha detaylı
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      const fileExtension = file.name.toLowerCase().split('.').pop();
+      const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+      
+      console.log('🔍 Dosya format kontrolü:', {
+        mimeType: file.type,
+        extension: fileExtension,
+        isAllowedMimeType: allowedTypes.includes(file.type),
+        isAllowedExtension: allowedExtensions.includes(fileExtension || '')
+      });
+      
+      if (!allowedTypes.includes(file.type) || !allowedExtensions.includes(fileExtension || '')) {
+        setSaveMessage({ 
+          type: 'error', 
+          message: `Geçersiz dosya formatı. Sadece JPG, PNG, GIF ve WebP dosyaları kabul edilir. Seçilen dosya: ${file.name}` 
+        });
+        return;
+      }
+
+      // Progress simülasyonu
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 100);
+
+      // Resmi sunucuya yükle
+      const imageUrl = await uploadService.uploadBackgroundImage(file);
+      
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      // Relative URL'yi tam URL'ye çevir
+      const fullImageUrl = `http://localhost:5000${imageUrl}`;
+      console.log('✅ Backend\'den gelen resim URL:', imageUrl);
+      console.log('🔗 Tam resim URL:', fullImageUrl);
+
+      // FormData'yı güncelle - Tam URL'yi kullan
+      setFormData(prev => ({ 
+        ...prev, 
+        backgroundImage: fullImageUrl,
+        surveyBackgroundImage: imageUrl // Backend için relative URL'yi kaydet
+      }));
+      
+      setSaveMessage({ type: 'success', message: 'Arka plan resmi başarıyla yüklendi!' });
+      setShowImageUpload(false);
+      
+      // 3 saniye sonra mesajı kaldır
+      setTimeout(() => setSaveMessage(null), 3000);
+      
+    } catch (error) {
+      console.error('❌ FormBuilder - Resim yükleme hatası:', error);
+      console.error('📋 Hata detayları:', {
+        error: error,
+        message: error instanceof Error ? error.message : 'Bilinmeyen hata',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
+      setSaveMessage({ 
+        type: 'error', 
+        message: error instanceof Error ? error.message : 'Resim yüklenirken bir hata oluştu' 
+      });
+    } finally {
+      setIsUploadingImage(false);
+      setUploadProgress(0);
+    }
+  };
+
   const handleSaveForm = async () => {
     try {
       setIsSaving(true);
@@ -390,6 +488,7 @@ const FormBuilder: React.FC = () => {
         // Backend UsersId bekliyor; sayısal gönderelim
         usersId: user?.id != null ? Number(user.id) : undefined,
         backgroundImage: formData.backgroundImage,
+        surveyBackgroundImage: formData.surveyBackgroundImage,
         // Questions'ları backend formatına dönüştür
         questions: formData.questions.map(q => ({
           id: q.id,
@@ -409,10 +508,8 @@ const FormBuilder: React.FC = () => {
       console.log('📤 Backend\'e gönderilecek veri (Survey):', surveyData);
 
       // 1) Anketi kaydet veya güncelle (surveyId varsa güncelle)
-      const params = new URLSearchParams(window.location.search);
-      const existingSurveyId = params.get('surveyId');
-      const savedSurvey = existingSurveyId
-        ? await surveyService.updateSurvey(existingSurveyId, surveyData).catch(async () => {
+      const savedSurvey = routeSurveyId
+        ? await surveyService.updateSurvey(routeSurveyId, surveyData).catch(async () => {
             // Eğer backend update endpoint'i yoksa create'e düş
             return await surveyService.createSurvey(surveyData)
           })
@@ -430,7 +527,7 @@ const FormBuilder: React.FC = () => {
       });
 
       // 2) Kaydedilen anket ID'sini tespit et
-      const rawSurveyId: any = existingSurveyId ?? (savedSurvey as any)?.id ?? (savedSurvey as any)?.surveyId ?? (savedSurvey as any)?._id;
+      const rawSurveyId: any = routeSurveyId ?? (savedSurvey as any)?.id ?? (savedSurvey as any)?.surveyId ?? (savedSurvey as any)?._id;
       if (!rawSurveyId && formData.questions.length > 0) {
         throw new Error('Anket ID alınamadı, sorular kaydedilemedi.');
       }
@@ -556,8 +653,6 @@ const FormBuilder: React.FC = () => {
     try {
       // Kaydet ve aktif yap
       // 1) Anketi oluştur/güncelle
-      const params = new URLSearchParams(window.location.search);
-      const existingSurveyId = params.get('surveyId');
 
       // Kaydetme için mevcut handleSaveForm içindeki hazır veriyi tekrar oluşturalım
       if (!formData.title.trim() || formData.questions.length === 0) {
@@ -572,6 +667,7 @@ const FormBuilder: React.FC = () => {
         isActive: true,
         usersId: user?.id != null ? Number(user.id) : undefined,
         backgroundImage: formData.backgroundImage,
+        surveyBackgroundImage: formData.surveyBackgroundImage,
         questions: formData.questions.map(q => ({
           id: q.id,
           type: q.type,
@@ -589,10 +685,10 @@ const FormBuilder: React.FC = () => {
 
       let savedSurvey: any = null
       let createdNew = false
-      if (existingSurveyId) {
+      if (routeSurveyId) {
         try {
           // Mevcut anketi güncellemeyi dene
-          savedSurvey = await surveyService.updateSurvey(existingSurveyId, surveyData)
+          savedSurvey = await surveyService.updateSurvey(routeSurveyId, surveyData)
         } catch (err) {
           // Backend update endpoint'i yoksa: yeni oluştur
           createdNew = true
@@ -603,7 +699,7 @@ const FormBuilder: React.FC = () => {
         savedSurvey = await surveyService.createSurvey(surveyData)
       }
 
-      const rawSurveyId: any = existingSurveyId ?? (savedSurvey as any)?.id ?? (savedSurvey as any)?.surveyId ?? (savedSurvey as any)?._id;
+      const rawSurveyId: any = routeSurveyId ?? (savedSurvey as any)?.id ?? (savedSurvey as any)?.surveyId ?? (savedSurvey as any)?._id;
       const surveyId: number | string = typeof rawSurveyId === 'string' && /^\d+$/.test(rawSurveyId) ? Number(rawSurveyId) : rawSurveyId;
 
       // Yeni oluşturulduysa soruları yaz (güncellemede kopya oluşmasını engeller)
@@ -842,15 +938,49 @@ const FormBuilder: React.FC = () => {
                     rows={2}
                   />
                   
-                  <motion.button
-                    onClick={() => setShowImageUpload(true)}
-                    className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition-all duration-300 flex items-center space-x-2"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <ImageIcon className="w-4 h-4" />
-                    <span>Arkaplan Resmi</span>
-                  </motion.button>
+                  <div className="flex items-center space-x-2">
+                    {/* Anket Resmi Yükleme Butonu */}
+                    <motion.button
+                      onClick={() => setShowImageUpload(true)}
+                      className="px-4 py-2 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 hover:from-blue-500/30 hover:to-indigo-500/30 text-white rounded-xl font-medium transition-all duration-300 flex items-center space-x-2 border border-blue-400/30 hover:border-blue-400/50"
+                      whileHover={{ scale: 1.05, y: -1 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                      <span>Anket Resmi</span>
+                    </motion.button>
+                    
+                    {/* Yüklenen Resim Önizlemesi */}
+                    {formData.backgroundImage && (
+                      <div className="flex items-center space-x-2">
+                        <div className="relative">
+                          <img
+                            src={formData.backgroundImage}
+                            alt="Anket Resmi"
+                            className="w-8 h-8 rounded-lg object-cover border border-white/20"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
+                        </div>
+                        
+                        <motion.button
+                          onClick={() => {
+                            setFormData(prev => ({ ...prev, backgroundImage: '', surveyBackgroundImage: '' }));
+                            setSaveMessage({ type: 'success', message: 'Anket resmi kaldırıldı' });
+                            setTimeout(() => setSaveMessage(null), 3000);
+                          }}
+                          className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-xl font-medium transition-all duration-300 flex items-center space-x-2"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>Kaldır</span>
+                        </motion.button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1073,12 +1203,22 @@ const FormBuilder: React.FC = () => {
               {activeTab === 'preview' && (
                 <motion.div 
                   key="preview"
-                  className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8"
+                  className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8 relative overflow-hidden"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.6, delay: 0.2 }}
+                  style={{
+                    backgroundImage: formData.backgroundImage ? `url(${formData.backgroundImage})` : undefined,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                  }}
                 >
+                  {formData.backgroundImage && (
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+                  )}
+                  <div className="relative z-10">
                   <h2 className="text-2xl font-bold text-white mb-6">Form Önizleme</h2>
                   <div className="bg-white/5 rounded-2xl p-6">
                     <h3 className="text-xl font-semibold text-white mb-4">{formData.title || 'Form Başlığı'}</h3>
@@ -1161,6 +1301,7 @@ const FormBuilder: React.FC = () => {
                         ))}
                       </div>
                     )}
+                  </div>
                   </div>
                 </motion.div>
               )}
@@ -1470,29 +1611,89 @@ const FormBuilder: React.FC = () => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
             >
-              <h3 className="text-2xl font-semibold text-white mb-6 text-center">Arkaplan Resmi Yükle</h3>
-              <div className="border-2 border-dashed border-blue-400/50 rounded-2xl p-8 text-center">
-                <Upload className="w-16 h-16 text-blue-400 mx-auto mb-4" />
-                <p className="text-blue-200 mb-6">Resim dosyasını buraya sürükleyin veya seçin</p>
+              <h3 className="text-2xl font-semibold text-white mb-2 text-center">Anket Resmi Yükle</h3>
+              <p className="text-blue-200 text-center mb-6">Anketinizin görsel kimliğini belirlemek için bir resim seçin</p>
+              <div 
+                className="border-2 border-dashed border-blue-400/50 rounded-2xl p-8 text-center transition-all duration-300"
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.add('border-blue-400', 'bg-blue-400/10');
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.remove('border-blue-400', 'bg-blue-400/10');
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.remove('border-blue-400', 'bg-blue-400/10');
+                  const files = e.dataTransfer.files;
+                  if (files.length > 0) {
+                    const file = files[0];
+                    
+                    // Dosya boyutu kontrolü
+                    if (file.size > 5 * 1024 * 1024) {
+                      setSaveMessage({ type: 'error', message: 'Dosya boyutu 5MB\'dan küçük olmalıdır' });
+                      return;
+                    }
+                    
+                    // Dosya tipi kontrolü
+                    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+                    const fileExtension = file.name.toLowerCase().split('.').pop();
+                    const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                    
+                    if (allowedTypes.includes(file.type) && allowedExtensions.includes(fileExtension || '')) {
+                      handleImageUpload(file);
+                    } else {
+                      setSaveMessage({ 
+                        type: 'error', 
+                        message: `Geçersiz dosya formatı. Sadece JPG, PNG, GIF ve WebP dosyaları kabul edilir. Seçilen dosya: ${file.name}` 
+                      });
+                    }
+                  }
+                }}
+              >
+                {isUploadingImage ? (
+                  <div className="space-y-4">
+                    <div className="w-16 h-16 border-4 border-blue-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <p className="text-blue-200">Anket resmi yükleniyor...</p>
+                    <div className="w-full bg-white/20 rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-blue-500 to-indigo-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-blue-300 text-sm">{uploadProgress}%</p>
+                  </div>
+                ) : (
+                  <>
+                    <Upload className="w-16 h-16 text-blue-400 mx-auto mb-4" />
+                    <p className="text-blue-200 mb-2">Anket resmi dosyasını buraya sürükleyin</p>
+                    <p className="text-blue-300 text-sm mb-6">veya aşağıdaki butona tıklayarak seçin</p>
+                  </>
+                )}
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      setFormData(prev => ({ ...prev, backgroundImage: URL.createObjectURL(file) }));
-                      setShowImageUpload(false);
+                      handleImageUpload(file);
                     }
                   }}
                   className="hidden"
                   id="form-image-upload"
+                  disabled={isUploadingImage}
                 />
                 <label
                   htmlFor="form-image-upload"
-                  className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-6 py-3 rounded-2xl cursor-pointer transition-all duration-300 shadow-xl hover:shadow-2xl inline-flex items-center space-x-2"
+                  className={`px-6 py-3 rounded-2xl transition-all duration-300 shadow-xl inline-flex items-center space-x-2 ${
+                    isUploadingImage 
+                      ? 'bg-gray-500 text-gray-300 cursor-not-allowed' 
+                      : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white cursor-pointer hover:shadow-2xl'
+                  }`}
                 >
                   <ImageIcon className="w-5 h-5" />
-                  <span>Resim Seç</span>
+                  <span>{isUploadingImage ? 'Yükleniyor...' : 'Resim Seç'}</span>
                 </label>
               </div>
               <div className="flex justify-end mt-6">

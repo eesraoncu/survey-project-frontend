@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getTrelloToken, getTrelloUserInfo, loginWithTrello } from '../services/trelloService';
+import { getTrelloToken, getTrelloUserInfo } from '../services/trelloService';
 import { useAuth } from '../contexts/AuthContext';
 
 const TrelloCallback: React.FC = () => {

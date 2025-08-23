@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resim Yükleme Testi</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .upload-area {
+            border: 2px dashed #fff;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .preview {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .preview img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        .background-test {
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 10px;
+            min-height: 200px;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            border: 2px solid #fff;
+        }
+        .log {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        input[type="file"] {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼️ Resim Yükleme Testi</h1>
+        <p>Bu sayfa resim yükleme ve görüntüleme işlemini test etmek için kullanılır.</p>
+        
+        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+            <h3>📁 Resim Seçin</h3>
+            <p>Resim dosyasını seçmek için tıklayın veya sürükleyin</p>
+            <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
+        </div>
+
+        <div class="preview" id="preview" style="display: none;">
+            <h3>🖼️ Yüklenen Resim</h3>
+            <img id="previewImage" alt="Önizleme">
+            <div>
+                <button onclick="uploadImage()">📤 Resmi Yükle</button>
+                <button onclick="testBackground()">🎨 Arka Plan Testi</button>
+            </div>
+        </div>
+
+        <div class="background-test" id="backgroundTest">
+            <h3>🎨 Arka Plan Testi</h3>
+            <p>Yüklenen resim arka plan olarak kullanılacak</p>
+        </div>
+
+        <div class="log" id="log">
+            <h3>📋 Log</h3>
+            <div id="logContent"></div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        let uploadedImageUrl = null;
+
+        function log(message) {
+            const logContent = document.getElementById('logContent');
+            const timestamp = new Date().toLocaleTimeString();
+            logContent.innerHTML += `[${timestamp}] ${message}<br>`;
+            logContent.scrollTop = logContent.scrollHeight;
+            console.log(message);
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                selectedFile = file;
+                log(`📁 Dosya seçildi: ${file.name} (${file.size} bytes)`);
+                
+                // Önizleme göster
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('preview');
+                    const previewImage = document.getElementById('previewImage');
+                    previewImage.src = e.target.result;
+                    preview.style.display = 'block';
+                    log('✅ Önizleme gösterildi');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        async function uploadImage() {
+            if (!selectedFile) {
+                log('❌ Lütfen önce bir dosya seçin');
+                return;
+            }
+
+            try {
+                log('📤 Resim yükleniyor...');
+                
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+
+                const response = await fetch('http://localhost:5000/api/upload/image', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                log(`✅ Resim başarıyla yüklendi: ${result.fileName}`);
+                log(`🔗 Dosya URL: ${result.fileUrl}`);
+                
+                uploadedImageUrl = result.fileUrl;
+                
+                // Tam URL oluştur
+                const fullUrl = `http://localhost:5000${result.fileUrl}`;
+                log(`🔗 Tam URL: ${fullUrl}`);
+                
+                // Arka plan testini güncelle
+                testBackgroundWithUrl(fullUrl);
+                
+            } catch (error) {
+                log(`❌ Yükleme hatası: ${error.message}`);
+                console.error('Upload error:', error);
+            }
+        }
+
+        function testBackground() {
+            if (uploadedImageUrl) {
+                const fullUrl = `http://localhost:5000${uploadedImageUrl}`;
+                testBackgroundWithUrl(fullUrl);
+            } else {
+                log('❌ Önce bir resim yükleyin');
+            }
+        }
+
+        function testBackgroundWithUrl(url) {
+            const backgroundTest = document.getElementById('backgroundTest');
+            backgroundTest.style.backgroundImage = `url('${url}')`;
+            log(`🎨 Arka plan güncellendi: ${url}`);
+        }
+
+        // Sayfa yüklendiğinde log başlat
+        log('🚀 Test sayfası yüklendi');
+        log('📍 Backend URL: http://localhost:5000');
+        log('📁 Upload endpoint: /api/upload/image');
+    </script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { FileText, Plus, BarChart3, Settings, LogIn, LogOut, User, Search, Calendar, X } from 'lucide-react'
+import { FileText, Plus, BarChart3, Settings, LogIn, LogOut, User, Search } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useState, useRef, useEffect } from 'react'
 
@@ -8,24 +8,14 @@ const Navbar = () => {
   const navigate = useNavigate()
   const { user, isAuthenticated, logout } = useAuth()
   const [showProfileMenu, setShowProfileMenu] = useState(false)
-  const [showCalendarMenu, setShowCalendarMenu] = useState(false)
-  const [showEventModal, setShowEventModal] = useState(false)
-  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({
-    show: false,
-    message: '',
-    type: 'success'
-  })
+
   const profileMenuRef = useRef<HTMLDivElement>(null)
-  const calendarMenuRef = useRef<HTMLDivElement>(null)
 
   // Click outside to close menus
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setShowProfileMenu(false)
-      }
-      if (calendarMenuRef.current && !calendarMenuRef.current.contains(event.target as Node)) {
-        setShowCalendarMenu(false)
       }
     }
 
@@ -357,69 +347,11 @@ const Navbar = () => {
     { path: '/forms/new', label: 'Yeni Anket', icon: <Plus className="w-5 h-5" /> }
   ]
 
-  const handleLogout = () => {
-    logout()
-    navigate('/login')
-    setShowProfileMenu(false)
-  }
 
-  const showToast = (message: string, type: 'success' | 'error') => {
-    setToast({ show: true, message, type })
-    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000)
-  }
 
-  const handleEventSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    
-    const formData = new FormData(e.currentTarget)
-    const eventData = {
-      title: formData.get('title') as string,
-      description: formData.get('description') as string,
-      eventDate: formData.get('eventDate') as string,
-      startTime: formData.get('startTime') as string,
-      endTime: formData.get('endTime') as string,
-      isAllDay: false,
-      location: '',
-      color: '#3788d8'
-    }
 
-    try {
-      const token = localStorage.getItem('authToken')
-      if (!token) {
-        throw new Error('Kimlik doğrulama token\'ı bulunamadı')
-      }
 
-      const response = await fetch('/api/events', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(eventData)
-      })
 
-      if (response.ok) {
-        const result = await response.json()
-        console.log('Etkinlik başarıyla eklendi:', result)
-        
-        // Modal'ı kapat
-        setShowEventModal(false)
-        
-        // Form'u temizle
-        e.currentTarget.reset()
-        
-        // Başarı toast mesajı göster
-        showToast('Etkinlik başarıyla eklendi!', 'success')
-      } else {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Etkinlik eklenirken bir hata oluştu')
-      }
-    } catch (error) {
-      console.error('Etkinlik ekleme hatası:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Etkinlik eklenirken bir hata oluştu'
-      showToast(`Hata: ${errorMessage}`, 'error')
-    }
-  }
 
   return (
     <nav className="bg-[#1A2B6B] shadow-sm border-b border-blue-800">
@@ -505,50 +437,7 @@ const Navbar = () => {
             
 
             
-            {/* Takvim Butonu */}
-            <div className="relative" ref={calendarMenuRef}>
-              <button 
-                onClick={() => setShowCalendarMenu(!showCalendarMenu)}
-                className="p-2 hover:bg-white/10 rounded-lg text-white hover:text-white transition-colors duration-200"
-              >
-                <Calendar className="w-5 h-5" />
-              </button>
-              
-              {showCalendarMenu && (
-                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Takvim</h3>
-                      <button 
-                        onClick={() => setShowCalendarMenu(false)}
-                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Bugün</p>
-                        <p className="text-xs text-blue-700 dark:text-blue-300">Henüz etkinlik yok</p>
-                      </div>
-                      <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">Yarın</p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">Henüz etkinlik yok</p>
-                      </div>
-                      <button 
-                        onClick={() => {
-                          setShowEventModal(true)
-                          setShowCalendarMenu(false)
-                        }}
-                        className="w-full mt-3 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors duration-200"
-                      >
-                        Yeni Etkinlik Ekle
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+
             
             {/* Ayarlar Butonu */}
             <button 
@@ -626,112 +515,9 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Etkinlik Ekleme Modal */}
-      {showEventModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Yeni Etkinlik Ekle</h3>
-              <button 
-                onClick={() => setShowEventModal(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleEventSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Etkinlik Adı
-                </label>
-                <input
-                  type="text"
-                  name="title"
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Etkinlik adını girin"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Tarih
-                </label>
-                <input
-                  type="date"
-                  name="eventDate"
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Başlangıç Saati
-                </label>
-                <input
-                  type="time"
-                  name="startTime"
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Bitiş Saati
-                </label>
-                <input
-                  type="time"
-                  name="endTime"
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Açıklama
-                </label>
-                <textarea
-                  name="description"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={3}
-                  placeholder="Etkinlik açıklaması"
-                />
-              </div>
-              
-              <div className="flex space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowEventModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
-                >
-                  İptal
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
-                >
-                  Etkinlik Ekle
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {/* Toast Mesajı */}
-      {toast.show && (
-        <div className="fixed top-4 right-4 z-50">
-          <div className={`px-6 py-3 rounded-lg shadow-lg text-white ${
-            toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
-          }`}>
-            {toast.message}
-          </div>
-        </div>
-      )}
+
+
     </nav>
   )
 }

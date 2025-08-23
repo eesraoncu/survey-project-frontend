@@ -3,7 +3,7 @@ import type { User } from './authService'
 
 const JIRA_CLIENT_ID = import.meta.env.VITE_JIRA_CLIENT_ID
 const JIRA_REDIRECT_URI = import.meta.env.VITE_JIRA_REDIRECT_URI
-const JIRA_TOKEN = import.meta.env.VITE_JIRA_TOKEN
+
 
 export interface JiraLoginResponse {
   success: boolean

@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FileText, Users, BarChart3, Calendar, AlertCircle, RefreshCw } from 'lucide-react';
+import { FileText, Users, BarChart3, Calendar, AlertCircle, RefreshCw, Image as ImageIcon } from 'lucide-react';
 import { questionService, type QuestionApiModel } from '../services/questionService';
 import { surveyService, type SurveyStats } from '../services/surveyService';
 
 const FormResponse: React.FC = () => {
   const { id } = useParams();
   const [stats, setStats] = useState<SurveyStats | null>(null);
+  const [survey, setSurvey] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [questions, setQuestions] = useState<QuestionApiModel[]>([]);
@@ -16,6 +17,7 @@ const FormResponse: React.FC = () => {
     if (id) {
       loadSurveyStats();
       loadSurveyQuestions();
+      loadSurveyData();
     }
   }, [id]);
 
@@ -33,9 +35,21 @@ const FormResponse: React.FC = () => {
     }
   };
 
+  const loadSurveyData = async () => {
+    try {
+      if (!id) return;
+      const surveyData = await surveyService.getSurveyById(id);
+      setSurvey(surveyData);
+      console.log('📸 Anket verisi yüklendi:', surveyData);
+    } catch (err: any) {
+      console.error('Error loading survey data:', err);
+    }
+  };
+
   const handleRefresh = () => {
     loadSurveyStats();
     loadSurveyQuestions();
+    loadSurveyData();
   };
 
   const loadSurveyQuestions = async () => {
@@ -60,13 +74,70 @@ const FormResponse: React.FC = () => {
           transition={{ duration: 0.5 }}
           className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8"
         >
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-blue-100/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FileText className="w-8 h-8 text-blue-300" />
-            </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Anket Yanıtları</h1>
-            <p className="text-blue-200">Anket ID: {id}</p>
-          </div>
+                     {/* Anket Resmi - Üst Yarı */}
+           {survey?.backgroundImage || survey?.surveyBackgroundImage ? (
+             <div className="relative mb-8">
+               <div className="w-full h-64 rounded-2xl overflow-hidden border-4 border-white/20 shadow-2xl">
+                 <img
+                   src={survey.backgroundImage || `http://localhost:5000${survey.surveyBackgroundImage}`}
+                   alt={survey?.surveyName || 'Anket Resmi'}
+                   className="w-full h-full object-cover"
+                   onLoad={(e) => {
+                     console.log('✅ Anket resmi başarıyla yüklendi:', e.currentTarget.src);
+                   }}
+                   onError={(e) => {
+                     console.error('❌ Anket resmi yüklenemedi:', survey.backgroundImage || survey.surveyBackgroundImage);
+                     console.error('🔗 Denenen URL:', survey.backgroundImage || `http://localhost:5000${survey.surveyBackgroundImage}`);
+                     // Resim yüklenemezse varsayılan ikonu göster
+                     e.currentTarget.style.display = 'none';
+                     const fallbackElement = e.currentTarget.nextElementSibling as HTMLElement;
+                     if (fallbackElement) {
+                       fallbackElement.style.display = 'flex';
+                     }
+                   }}
+                 />
+                 <div className="w-full h-full bg-blue-100/20 flex items-center justify-center" style={{ display: 'none' }}>
+                   <ImageIcon className="w-16 h-16 text-blue-300" />
+                 </div>
+               </div>
+               
+               {/* Resmin üzerinde etiketler */}
+               <div className="absolute top-4 left-4 flex flex-col gap-2">
+                 <div className="px-3 py-1 bg-orange-500/80 text-white text-sm font-medium rounded-full">
+                   Taslak
+                 </div>
+                 <div className="px-3 py-1 bg-gray-500/80 text-white text-sm rounded-full">
+                   Genel
+                 </div>
+               </div>
+               
+               {/* Resmin üzerinde bulut ikonu */}
+               <div className="absolute top-4 right-4">
+                 <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                   <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                     <path d="M5.5 16a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 16h-8z" />
+                   </svg>
+                 </div>
+               </div>
+             </div>
+           ) : (
+             <div className="w-16 h-16 bg-blue-100/20 rounded-full flex items-center justify-center mx-auto mb-4">
+               <FileText className="w-8 h-8 text-blue-300" />
+             </div>
+           )}
+           
+           {/* Anket Bilgileri - Alt Yarı */}
+           <div className="text-center mb-8">
+             <h1 className="text-3xl font-bold text-white mb-2">
+               {survey?.surveyName || 'Anket Yanıtları'}
+             </h1>
+             <p className="text-blue-200 mb-2">Anket ID: {id}</p>
+             {survey?.surveyDescription && (
+               <p className="text-blue-300 text-sm max-w-2xl mx-auto">
+                 {survey.surveyDescription}
+               </p>
+             )}
+           </div>
 
           {error && (
             <motion.div 
@@ -128,7 +199,7 @@ const FormResponse: React.FC = () => {
               {Array.isArray(stats.questionStats) && stats.questionStats.length > 0 && (
                 <div className="space-y-6">
                   <h3 className="text-xl font-semibold text-white">Soru İstatistikleri</h3>
-                  {stats.questionStats.map((questionStat, index) => (
+                  {stats.questionStats.map((questionStat) => (
                     <div key={questionStat.questionId} className="bg-white/10 rounded-xl p-6 border border-white/20">
                       <h4 className="font-semibold text-white mb-4">{questionStat.questionTitle}</h4>
                       <div className="space-y-3">

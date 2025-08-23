@@ -7,7 +7,6 @@ import {
   Sparkles, 
   TrendingUp, 
   Rocket, 
-  BarChart3,
   Users,
   MoreVertical,
   Calendar,
@@ -666,7 +665,7 @@ const Home: React.FC = () => {
                   </div>
                   
                   {/* Quick Actions */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16 max-w-5xl mx-auto">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16 max-w-4xl mx-auto">
                     {/* Boş Form */}
                     <motion.div
                       className="group cursor-pointer"
@@ -719,29 +718,7 @@ const Home: React.FC = () => {
                       </div>
                     </motion.div>
 
-                    {/* İstatistik Kartı */}
-                      <motion.div 
-                      className="group"
-                      whileHover={{ y: -8, scale: 1.02 }}
-                    >
-                      <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 backdrop-blur-xl rounded-3xl p-8 border border-green-300/30 shadow-2xl group-hover:shadow-3xl transition-all duration-500 h-full">
-                        <div className="text-center">
-                          <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl group-hover:shadow-2xl group-hover:scale-110 transition-all duration-300">
-                            <BarChart3 className="w-8 h-8 text-white" />
-                        </div>
-                          <h3 className="text-xl font-bold text-white mb-3 group-hover:text-green-200 transition-colors">
-                            Bu Ay
-                          </h3>
-                          <p className="text-green-300 text-2xl font-bold mb-2">
-                            +156%
-                          </p>
-                          <div className="flex items-center justify-center text-xs text-green-300">
-                            <TrendingUp className="w-3 h-3 mr-1" />
-                            Artış oranı
-                          </div>
-                        </div>
-                        </div>
-                      </motion.div>
+
                   </div>
 
                     {/* Template Gallery */}

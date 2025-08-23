@@ -15,6 +15,7 @@ export interface Survey {
   lastModified?: string;
   status?: 'active' | 'draft' | 'archived';
   backgroundImage?: string;
+  surveyBackgroundImage?: string; // Backend'den gelen alan
   questions?: number;
   views?: number;
   completionRate?: number;
@@ -74,6 +75,7 @@ export interface FormData {
   
   // Frontend için ek alanlar
   backgroundImage?: string;
+  surveyBackgroundImage?: string; // Backend'den gelen alan
   questions?: Question[];
   settings?: {
     allowAnonymous: boolean;
@@ -156,7 +158,7 @@ export const surveyService = {
       async () => (await apiClient.get<Survey[]>(`/Surveys/get-all`, { params: { userId: id } })).data,
     ]
 
-    let lastError: unknown = null
+
     for (let i = 0; i < attempts.length; i += 1) {
       try {
         console.log(`[surveyService.getSurveysByUserFlexible] Attempt ${i + 1}`)
@@ -166,7 +168,6 @@ export const surveyService = {
           return data
         }
       } catch (err) {
-        lastError = err
         // bir sonraki denemeye geç
       }
     }

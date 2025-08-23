@@ -15,6 +15,7 @@ import JiraCallback from './pages/JiraCallback'
 import NotFound from './pages/NotFound'
 import Settings from './pages/Settings'
 import ProtectedRoute from './components/ProtectedRoute'
+import TestUpload from './pages/TestUpload'
 
 function App() {
   // Global renk ve dil değişiklik fonksiyonları
@@ -732,6 +733,7 @@ function App() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/auth/trello/callback" element={<TrelloCallback />} />
       <Route path="/auth/jira/callback" element={<JiraCallback />} />
+      <Route path="/test-upload" element={<TestUpload />} />
 
       {/* Tüm uygulama layout'u */}
       <Route element={<Layout />}>
@@ -754,6 +756,14 @@ function App() {
         />
         <Route
           path="/form-builder"
+          element={
+            <ProtectedRoute>
+              <FormBuilder />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/form-builder/:id"
           element={
             <ProtectedRoute>
               <FormBuilder />

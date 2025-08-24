@@ -26,6 +26,7 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { getCities, getDistricts, getTownships, getNeighbourhoods } from '../services/addressService';
 import { getTrelloAuthUrl } from '../services/trelloService';
 import { getJiraAuthUrl } from '../services/jiraService';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -72,6 +73,7 @@ const Login: React.FC = () => {
   const from = (location.state as any)?.from?.pathname || '/home';
   const { theme, toggleTheme } = useTheme();
   const { login, register, loginWithGoogle } = useAuth();
+  const { t } = useLanguage();
 
   // Password validation function
   const validatePassword = (password: string) => {
@@ -412,7 +414,7 @@ const Login: React.FC = () => {
                   : 'text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'
               }`}
             >
-              GİRİŞ YAP
+              {t('login')}
             </button>
             <button
               onClick={() => setActiveTab('signup')}
@@ -422,7 +424,7 @@ const Login: React.FC = () => {
                   : 'text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'
               }`}
             >
-              KAYIT OL
+              {t('signup')}
             </button>
           </div>
 
@@ -438,7 +440,7 @@ const Login: React.FC = () => {
               {/* Email Field */}
               <div className="space-y-2">
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-blue-200">
-                  E-posta Adresi
+                  {t('email')}
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-blue-300" />
@@ -448,7 +450,7 @@ const Login: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 bg-white/80 dark:bg-white/10 border border-gray-300/50 dark:border-white/20 rounded-xl focus:ring-2 focus:ring-green-400 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-blue-300 backdrop-blur-xl transition-colors duration-300"
-                    placeholder="E-posta adresinizi girin"
+                    placeholder={t('emailPlaceholder')}
                     required
                   />
                 </div>
@@ -457,7 +459,7 @@ const Login: React.FC = () => {
               {/* Password Field */}
               <div className="space-y-2">
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-blue-200">
-                  Şifre
+                  {t('password')}
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-blue-300" />
@@ -467,7 +469,7 @@ const Login: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full pl-10 pr-12 py-3 bg-white/80 dark:bg-white/10 border border-gray-300/50 dark:border-white/20 rounded-xl focus:ring-2 focus:ring-green-400 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-blue-300 backdrop-blur-xl transition-colors duration-300"
-                    placeholder="Şifrenizi girin"
+                    placeholder={t('passwordPlaceholder')}
                     required
                   />
                   <button
@@ -496,11 +498,11 @@ const Login: React.FC = () => {
                     >
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
                     </motion.div>
-                    <span>Giriş Yapılıyor...</span>
+                    <span>{t('loggingIn')}</span>
                   </>
                 ) : (
                   <>
-                    <span>GİRİŞ YAP</span>
+                    <span>{t('login')}</span>
                     <ArrowRight className="w-5 h-5" />
                   </>
                 )}
@@ -512,7 +514,7 @@ const Login: React.FC = () => {
                   <div className="w-full border-t border-gray-300/50 dark:border-white/20"></div>
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-gradient-to-br from-white/90 to-blue-50/90 dark:from-slate-800/90 dark:to-blue-900/90 px-2 text-gray-600 dark:text-blue-300">veya</span>
+                  <span className="bg-gradient-to-br from-white/90 to-blue-50/90 dark:from-slate-800/90 dark:to-blue-900/90 px-2 text-gray-600 dark:text-blue-300">{t('or')}</span>
                 </div>
               </div>
 
@@ -525,7 +527,7 @@ const Login: React.FC = () => {
                   whileHover={{ scale: 1.02, y: -1 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <span>GOOGLE İLE GİRİŞ YAP</span>
+                  <span>{t('googleLogin')}</span>
                 </motion.button>
                 <motion.button
                   type="button"
@@ -535,7 +537,7 @@ const Login: React.FC = () => {
                   whileTap={{ scale: 0.98 }}
                 >
                   <LayoutDashboard className="w-5 h-5" />
-                  <span>TRELLO İLE GİRİŞ YAP</span>
+                  <span>{t('trelloLogin')}</span>
                 </motion.button>
                 <motion.button
                   type="button"
@@ -545,7 +547,7 @@ const Login: React.FC = () => {
                   whileTap={{ scale: 0.98 }}
                 >
                   <Layers className="w-5 h-5" />
-                  <span>JIRA İLE GİRİŞ YAP</span>
+                  <span>{t('jiraLogin')}</span>
                 </motion.button>
               </div>
             </motion.form>
@@ -564,13 +566,13 @@ const Login: React.FC = () => {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
                   <User className="w-5 h-5" />
-                  <span>Kişisel Bilgiler</span>
+                  <span>{t('personalInfo')}</span>
                 </h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="userName" className="block text-sm font-medium text-gray-700 dark:text-blue-200 mb-1">
-                      Ad *
+                      {t('name')} *
                     </label>
                     <input
                       type="text"
@@ -581,7 +583,7 @@ const Login: React.FC = () => {
                       className={`w-full px-4 py-3 bg-white/80 dark:bg-white/10 border rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-blue-300 transition-colors duration-300 ${
                         registerErrors.userName ? 'border-red-500' : 'border-gray-300/50 dark:border-white/20'
                       }`}
-                      placeholder="Adınızı girin"
+                      placeholder={t('namePlaceholder')}
                     />
                     {registerErrors.userName && (
                       <p className="text-red-500 text-sm mt-1">{registerErrors.userName}</p>
@@ -590,7 +592,7 @@ const Login: React.FC = () => {
 
                   <div>
                     <label htmlFor="userSurname" className="block text-sm font-medium text-gray-700 dark:text-blue-200 mb-1">
-                      Soyad *
+                      {t('surname')} *
                     </label>
                     <input
                       type="text"
@@ -601,7 +603,7 @@ const Login: React.FC = () => {
                       className={`w-full px-4 py-3 bg-white/80 dark:bg-white/10 border rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-blue-300 transition-colors duration-300 ${
                         registerErrors.userSurname ? 'border-red-500' : 'border-gray-300/50 dark:border-white/20'
                       }`}
-                      placeholder="Soyadınızı girin"
+                      placeholder={t('surnamePlaceholder')}
                     />
                     {registerErrors.userSurname && (
                       <p className="text-red-500 text-sm mt-1">{registerErrors.userSurname}</p>
@@ -610,7 +612,7 @@ const Login: React.FC = () => {
 
                   <div>
                     <label htmlFor="userEmail" className="block text-sm font-medium text-gray-700 dark:text-blue-200 mb-1">
-                      E-posta *
+                      {t('email')} *
                     </label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-blue-300" />
@@ -623,7 +625,7 @@ const Login: React.FC = () => {
                         className={`w-full pl-10 pr-4 py-3 bg-white/80 dark:bg-white/10 border rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-blue-300 transition-colors duration-300 ${
                           registerErrors.userEmail ? 'border-red-500' : 'border-gray-300/50 dark:border-white/20'
                         }`}
-                        placeholder="E-posta adresinizi girin"
+                        placeholder={t('emailPlaceholder')}
                       />
                     </div>
                     {registerErrors.userEmail && (
@@ -633,7 +635,7 @@ const Login: React.FC = () => {
 
                   <div>
                     <label htmlFor="userAge" className="block text-sm font-medium text-gray-700 dark:text-blue-200 mb-1">
-                      Yaş *
+                      {t('age')} *
                     </label>
                     <div className="relative">
                       <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-blue-300" />
@@ -648,7 +650,7 @@ const Login: React.FC = () => {
                         className={`w-full pl-10 pr-4 py-3 bg-white/80 dark:bg-white/10 border rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-blue-300 transition-colors duration-300 ${
                           registerErrors.userAge ? 'border-red-500' : 'border-gray-300/50 dark:border-white/20'
                         }`}
-                        placeholder="Yaşınızı girin"
+                        placeholder={t('agePlaceholder')}
                       />
                     </div>
                     {registerErrors.userAge && (
@@ -658,7 +660,7 @@ const Login: React.FC = () => {
 
                   <div className="md:col-span-2">
                     <label htmlFor="userPassword" className="block text-sm font-medium text-gray-700 dark:text-blue-200 mb-1">
-                      Şifre *
+                      {t('password')} *
                     </label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-blue-300" />
@@ -671,7 +673,7 @@ const Login: React.FC = () => {
                         className={`w-full pl-10 pr-12 py-3 bg-white/80 dark:bg-white/10 border rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-blue-300 transition-colors duration-300 ${
                           registerErrors.userPassword ? 'border-red-500' : 'border-gray-300/50 dark:border-white/20'
                         }`}
-                        placeholder="Şifrenizi oluşturun"
+                        placeholder={t('passwordPlaceholder')}
                       />
                       <button
                         type="button"
@@ -688,7 +690,7 @@ const Login: React.FC = () => {
                                          {/* Password Confirmation */}
                      <div className="md:col-span-2">
                        <label htmlFor="passwordConfirm" className="block text-sm font-medium text-gray-700 dark:text-blue-200 mb-1">
-                         Şifre Tekrarı *
+                         {t('passwordConfirm')} *
                        </label>
                        <div className="relative">
                          <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-blue-300" />
@@ -700,7 +702,7 @@ const Login: React.FC = () => {
                            className={`w-full pl-10 pr-12 py-3 bg-white/80 dark:bg-white/10 border rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-blue-300 transition-colors duration-300 ${
                              registerErrors.passwordConfirm ? 'border-red-500' : 'border-gray-300/50 dark:border-white/20'
                            }`}
-                           placeholder="Şifrenizi tekrar girin"
+                           placeholder={t('passwordConfirmPlaceholder')}
                          />
                          <button
                            type="button"
@@ -714,10 +716,10 @@ const Login: React.FC = () => {
                           registerData.userPassword === passwordConfirm ? (
                             <p className="text-green-500 text-sm mt-1 flex items-center space-x-1">
                               <Check className="w-4 h-4" />
-                              <span>Şifreler eşleşiyor</span>
+                              <span>{t('passwordsMatch')}</span>
                             </p>
                           ) : (
-                            <p className="text-red-500 text-sm mt-1">Şifreler eşleşmiyor</p>
+                            <p className="text-red-500 text-sm mt-1">{t('passwordsDoNotMatch')}</p>
                           )
                         )}
                      </div>
@@ -732,7 +734,7 @@ const Login: React.FC = () => {
                              <X className="w-4 h-4 text-gray-400" />
                            )}
                            <span className={passwordCriteria.minLength ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
-                             En az 8 karakter
+                             {t('passwordMinLength')}
                            </span>
                          </div>
                          <div className="flex items-center space-x-2 text-sm">
@@ -742,7 +744,7 @@ const Login: React.FC = () => {
                              <X className="w-4 h-4 text-gray-400" />
                            )}
                            <span className={passwordCriteria.hasNumber ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
-                             En az 1 rakam
+                             {t('passwordAtLeastOneNumber')}
                            </span>
                          </div>
                          <div className="flex items-center space-x-2 text-sm">
@@ -752,7 +754,7 @@ const Login: React.FC = () => {
                              <X className="w-4 h-4 text-gray-400" />
                            )}
                            <span className={passwordCriteria.hasSpecialChar ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
-                             En az 1 özel karakter
+                             {t('passwordAtLeastOneSpecialChar')}
                            </span>
                          </div>
                        </div>
@@ -765,13 +767,13 @@ const Login: React.FC = () => {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
                   <MapPin className="w-5 h-5" />
-                  <span>Adres Bilgileri</span>
+                  <span>{t('addressInfo')}</span>
                 </h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="cityName" className="block text-sm font-medium text-gray-700 dark:text-blue-200 mb-1">
-                      Şehir
+                      {t('city')}
                     </label>
                     <div className="relative">
                       <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-blue-300" />
@@ -782,7 +784,7 @@ const Login: React.FC = () => {
                         onChange={handleCityChange}
                         className="w-full pl-10 pr-4 py-3 bg-white/80 dark:bg-white/10 border border-gray-300/50 dark:border-white/20 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-white transition-colors duration-300"
                       >
-                        <option value="">Şehir seçin</option>
+                        <option value="">{t('selectCity')}</option>
                         {cities.map((c) => (
                           <option key={c} value={c}>{c}</option>
                         ))}
@@ -792,7 +794,7 @@ const Login: React.FC = () => {
 
                   <div>
                     <label htmlFor="districtName" className="block text-sm font-medium text-gray-700 dark:text-blue-200 mb-1">
-                      İlçe
+                      {t('district')}
                     </label>
                     <div className="relative">
                       <Navigation className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-blue-300" />
@@ -804,7 +806,7 @@ const Login: React.FC = () => {
                         disabled={!registerData.cityName || addressLoading.districts}
                         className="w-full pl-10 pr-4 py-3 bg-white/80 dark:bg-white/10 border border-gray-300/50 dark:border-white/20 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-white transition-colors duration-300 disabled:opacity-60"
                       >
-                        <option value="">İlçe seçin</option>
+                        <option value="">{t('selectDistrict')}</option>
                         {districts.map((d) => (
                           <option key={d} value={d}>{d}</option>
                         ))}
@@ -814,7 +816,7 @@ const Login: React.FC = () => {
 
                   <div>
                     <label htmlFor="districtTownshipTownName" className="block text-sm font-medium text-gray-700 dark:text-blue-200 mb-1">
-                      Bucak/Nahiye
+                      {t('bucakNahiye')}
                     </label>
                     <div className="relative">
                       <Home className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-blue-300" />
@@ -826,7 +828,7 @@ const Login: React.FC = () => {
                         disabled={!registerData.districtName || addressLoading.townships}
                         className="w-full pl-10 pr-4 py-3 bg-white/80 dark:bg-white/10 border border-gray-300/50 dark:border-white/20 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-white transition-colors duration-300 disabled:opacity-60"
                       >
-                        <option value="">Bucak/Nahiye seçin</option>
+                        <option value="">{t('selectBucakNahiye')}</option>
                         {townships.map((t) => (
                           <option key={t} value={t}>{t}</option>
                         ))}
@@ -836,7 +838,7 @@ const Login: React.FC = () => {
 
                   <div>
                     <label htmlFor="neighbourhoodName" className="block text-sm font-medium text-gray-700 dark:text-blue-200 mb-1">
-                      Mahalle
+                      {t('neighbourhood')}
                     </label>
                     <div className="relative">
                       <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-blue-300" />
@@ -848,7 +850,7 @@ const Login: React.FC = () => {
                         disabled={!registerData.districtTownshipTownName || addressLoading.neighbourhoods}
                         className="w-full pl-10 pr-4 py-3 bg-white/80 dark:bg-white/10 border border-gray-300/50 dark:border-white/20 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-white transition-colors duration-300 disabled:opacity-60"
                       >
-                        <option value="">Mahalle seçin</option>
+                        <option value="">{t('selectNeighbourhood')}</option>
                         {neighbourhoods.map((n) => (
                           <option key={n} value={n}>{n}</option>
                         ))}
@@ -858,7 +860,7 @@ const Login: React.FC = () => {
 
                   <div className="md:col-span-2">
                     <label htmlFor="addressDetails" className="block text-sm font-medium text-gray-700 dark:text-blue-200 mb-1">
-                      Detaylı Adres
+                      {t('detailedAddress')}
                     </label>
                     <textarea
                       id="addressDetails"
@@ -867,7 +869,7 @@ const Login: React.FC = () => {
                       onChange={handleRegisterInputChange}
                       rows={3}
                       className="w-full px-4 py-3 bg-white/80 dark:bg-white/10 border border-gray-300/50 dark:border-white/20 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-blue-300 transition-colors duration-300 resize-none"
-                      placeholder="Sokak, bina no, kat, daire no vb. detayları girin"
+                      placeholder={t('addressDetailsPlaceholder')}
                     />
                   </div>
                 </div>
@@ -889,11 +891,11 @@ const Login: React.FC = () => {
                     >
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
                     </motion.div>
-                    <span>Hesap Oluşturuluyor...</span>
+                    <span>{t('creatingAccount')}</span>
                   </>
                 ) : (
                   <>
-                    <span>HESAP OLUŞTUR</span>
+                    <span>{t('createAccount')}</span>
                     <ArrowRight className="w-5 h-5" />
                   </>
                 )}
@@ -909,17 +911,17 @@ const Login: React.FC = () => {
                   onClick={() => navigate('/forgot-password')}
                   className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors"
                 >
-                  Şifremi Unuttum
+                  {t('forgotPassword')}
                 </button>
               </p>
             ) : (
               <p className="text-sm text-gray-600 dark:text-blue-300">
-                Zaten hesabınız var mı?{' '}
+                {t('alreadyHaveAccount')}
                 <button
                   onClick={() => setActiveTab('login')}
                   className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors"
                 >
-                  Giriş yapın
+                  {t('login')}
                 </button>
               </p>
             )}

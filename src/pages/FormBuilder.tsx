@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { surveyService, type FormData as SurveyFormData } from '../services/surveyService';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { questionService, type UpsertQuestionRequest } from '../services/questionService';
 import { getQuestionTypeIdByFrontendType } from '../services/questionTypeService';
 import { uploadService } from '../services/uploadService';
@@ -69,6 +70,7 @@ const FormBuilder: React.FC = () => {
   const navigate = useNavigate();
   const { id: routeSurveyId } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [formData, setFormData] = useState<FormData>({
     title: '',
     description: '',
@@ -117,7 +119,7 @@ const FormBuilder: React.FC = () => {
         const mappedQuestions: Question[] = (questions || []).map((q, idx) => ({
           id: String(q.id ?? idx),
           type: (q.questionType as any) || 'text',
-          title: q.questionsText || 'Soru',
+          title: q.questionsText || t('Soru'),
           required: false,
           options: Array.isArray(q.choices) ? q.choices : [],
           placeholder: '',
@@ -141,7 +143,7 @@ const FormBuilder: React.FC = () => {
           tags: survey.tags || []
         });
 
-        setSaveMessage({ type: 'success', message: `Anket yüklendi (${mappedQuestions.length} soru).` });
+        setSaveMessage({ type: 'success', message: `${t('Anket yüklendi')} (${mappedQuestions.length} ${t('soru')}).` });
         setTimeout(() => setSaveMessage(null), 3000);
         return true;
       } catch (e) {
@@ -179,7 +181,7 @@ const FormBuilder: React.FC = () => {
         console.log('🔄 Template soruları dönüştürüldü:', templateQuestions);
 
         setFormData({
-          title: template.title || 'Şablon Formu',
+          title: template.title || t('Şablon Formu'),
           description: template.description || '',
           backgroundImage: '',
           questions: templateQuestions,
@@ -191,7 +193,7 @@ const FormBuilder: React.FC = () => {
           },
           status: 'draft',
           category: template.category || 'Genel',
-          tags: ['Şablon']
+          tags: [t('Şablon')]
         });
 
         console.log('💾 FormData güncellendi (Template), soru sayısı:', templateQuestions.length);
@@ -199,7 +201,7 @@ const FormBuilder: React.FC = () => {
         // Başarı mesajı göster
         setSaveMessage({ 
           type: 'success', 
-          message: `${template.title} şablonu ${templateQuestions.length} soru ile yüklendi!` 
+          message: `${template.title} ${t('şablonu')} ${templateQuestions.length} ${t('soru')} ile yüklendi!` 
         });
 
         // localStorage'dan sil
@@ -238,7 +240,7 @@ const FormBuilder: React.FC = () => {
         console.log('🔄 AI soruları dönüştürüldü:', aiQuestions);
 
         setFormData({
-          title: aiSurvey.title || 'AI ile Oluşturulan Anket',
+          title: aiSurvey.title || t('AI ile Oluşturulan Anket'),
           description: aiSurvey.description || '',
           backgroundImage: '',
           questions: aiQuestions,
@@ -250,7 +252,7 @@ const FormBuilder: React.FC = () => {
           },
           status: 'draft',
           category: 'Genel',
-          tags: ['AI-Generated']
+          tags: [t('AI-Generated')]
         });
 
         console.log('💾 FormData güncellendi, soru sayısı:', aiQuestions.length);
@@ -258,7 +260,7 @@ const FormBuilder: React.FC = () => {
         // Başarı mesajı göster
         setSaveMessage({ 
           type: 'success', 
-          message: `AI tarafından ${aiQuestions.length} soru ile anket oluşturuldu!` 
+          message: `${t('AI tarafından')} ${aiQuestions.length} ${t('soru')} ile anket oluşturuldu!` 
         });
 
         // localStorage'dan sil
@@ -272,7 +274,7 @@ const FormBuilder: React.FC = () => {
         console.error('💥 AI verisi parse edilemedi:', error);
         setSaveMessage({ 
           type: 'error', 
-          message: 'AI verisi yüklenirken hata oluştu.' 
+          message: t('AI verisi yüklenirken hata oluştu.') 
         });
         localStorage.removeItem('aiGeneratedForm');
       }
@@ -328,17 +330,17 @@ const FormBuilder: React.FC = () => {
 
   // Soru türleri - backend entegrasyonlu ama UI'da her zaman görünür (11 tip)
   const questionTypes = [
-    { type: 'text' as const, label: 'Kısa Yanıt', icon: <Type className="w-5 h-5" />, color: 'bg-blue-500' },
-    { type: 'textarea' as const, label: 'Paragraf', icon: <List className="w-5 h-5" />, color: 'bg-green-500' },
-    { type: 'radio' as const, label: 'Çoktan Seçmeli', icon: <Radio className="w-5 h-5" />, color: 'bg-purple-500' },
-    { type: 'checkbox' as const, label: 'Çoklu Seçim', icon: <CheckSquare className="w-5 h-5" />, color: 'bg-orange-500' },
-    { type: 'select' as const, label: 'Açılır Liste', icon: <ChevronDown className="w-5 h-5" />, color: 'bg-indigo-500' },
-    { type: 'rating' as const, label: 'Derecelendirme', icon: <Star className="w-5 h-5" />, color: 'bg-yellow-500' },
-    { type: 'date' as const, label: 'Tarih', icon: <Calendar className="w-5 h-5" />, color: 'bg-red-500' },
-    { type: 'location' as const, label: 'Konum', icon: <MapPin className="w-5 h-5" />, color: 'bg-teal-500' },
-    { type: 'phone' as const, label: 'Telefon', icon: <Phone className="w-5 h-5" />, color: 'bg-pink-500' },
-    { type: 'email' as const, label: 'E-posta', icon: <Mail className="w-5 h-5" />, color: 'bg-cyan-500' },
-    { type: 'name' as const, label: 'Ad Soyad', icon: <User className="w-5 h-5" />, color: 'bg-gray-500' }
+         { type: 'text' as const, label: t('Short Answer'), icon: <Type className="w-5 h-5" />, color: 'bg-blue-500' },
+         { type: 'textarea' as const, label: t('Paragraph'), icon: <List className="w-5 h-5" />, color: 'bg-green-500' },
+         { type: 'radio' as const, label: t('Multiple Choice'), icon: <Radio className="w-5 h-5" />, color: 'bg-purple-500' },
+         { type: 'checkbox' as const, label: t('Multiple Select'), icon: <CheckSquare className="w-5 h-5" />, color: 'bg-orange-500' },
+         { type: 'select' as const, label: t('Dropdown List'), icon: <ChevronDown className="w-5 h-5" />, color: 'bg-indigo-500' },
+         { type: 'rating' as const, label: t('Rating'), icon: <Star className="w-5 h-5" />, color: 'bg-yellow-500' },
+         { type: 'date' as const, label: t('Date Question'), icon: <Calendar className="w-5 h-5" />, color: 'bg-red-500' },
+         { type: 'location' as const, label: t('Location'), icon: <MapPin className="w-5 h-5" />, color: 'bg-teal-500' },
+         { type: 'phone' as const, label: t('Phone'), icon: <Phone className="w-5 h-5" />, color: 'bg-pink-500' },
+         { type: 'email' as const, label: t('Email Question'), icon: <Mail className="w-5 h-5" />, color: 'bg-cyan-500' },
+         { type: 'name' as const, label: t('Full Name'), icon: <User className="w-5 h-5" />, color: 'bg-gray-500' }
   ];
 
   const addQuestion = (type: Question['type']) => {
@@ -384,7 +386,7 @@ const FormBuilder: React.FC = () => {
       
       // Dosya boyutu kontrolü (5MB limit)
       if (file.size > 5 * 1024 * 1024) {
-        setSaveMessage({ type: 'error', message: 'Dosya boyutu 5MB\'dan küçük olmalıdır' });
+        setSaveMessage({ type: 'error', message: t('Dosya boyutu 5MB\'dan küçük olmalıdır') });
         return;
       }
 
@@ -403,7 +405,7 @@ const FormBuilder: React.FC = () => {
       if (!allowedTypes.includes(file.type) || !allowedExtensions.includes(fileExtension || '')) {
         setSaveMessage({ 
           type: 'error', 
-          message: `Geçersiz dosya formatı. Sadece JPG, PNG, GIF ve WebP dosyaları kabul edilir. Seçilen dosya: ${file.name}` 
+          message: 'Invalid file format. Only JPG, PNG, GIF and WebP files are accepted. Selected file: ' + file.name 
         });
         return;
       }
@@ -437,7 +439,7 @@ const FormBuilder: React.FC = () => {
         surveyBackgroundImage: imageUrl // Backend için relative URL'yi kaydet
       }));
       
-      setSaveMessage({ type: 'success', message: 'Arka plan resmi başarıyla yüklendi!' });
+      setSaveMessage({ type: 'success', message: 'Background image uploaded successfully!' });
       setShowImageUpload(false);
       
       // 3 saniye sonra mesajı kaldır
@@ -453,7 +455,7 @@ const FormBuilder: React.FC = () => {
       
       setSaveMessage({ 
         type: 'error', 
-        message: error instanceof Error ? error.message : 'Resim yüklenirken bir hata oluştu' 
+        message: error instanceof Error ? error.message : 'An error occurred while uploading the image' 
       });
     } finally {
       setIsUploadingImage(false);
@@ -468,12 +470,12 @@ const FormBuilder: React.FC = () => {
 
       // Form validasyonu
       if (!formData.title.trim()) {
-        setSaveMessage({ type: 'error', message: 'Form başlığı gereklidir' });
+                 setSaveMessage({ type: 'error', message: t('Form title is required') });
         return;
       }
 
       if (formData.questions.length === 0) {
-        setSaveMessage({ type: 'error', message: 'En az bir soru eklemelisiniz' });
+                 setSaveMessage({ type: 'error', message: 'You must add at least one question' });
         return;
       }
 
@@ -529,7 +531,7 @@ const FormBuilder: React.FC = () => {
       // 2) Kaydedilen anket ID'sini tespit et
       const rawSurveyId: any = routeSurveyId ?? (savedSurvey as any)?.id ?? (savedSurvey as any)?.surveyId ?? (savedSurvey as any)?._id;
       if (!rawSurveyId && formData.questions.length > 0) {
-        throw new Error('Anket ID alınamadı, sorular kaydedilemedi.');
+        throw new Error(t('Anket ID alınamadı, sorular kaydedilemedi.'));
       }
       const surveyId: number | string = typeof rawSurveyId === 'string' && /^\d+$/.test(rawSurveyId)
         ? Number(rawSurveyId)
@@ -545,7 +547,7 @@ const FormBuilder: React.FC = () => {
           formData.questions.map(async (q, index) => {
             const titleTrim = (q.title || '').trim()
             const placeholderTrim = (q.placeholder || '').trim()
-            const questionsText = titleTrim ? titleTrim : (placeholderTrim || 'Yeni Soru')
+            const questionsText = titleTrim ? titleTrim : (placeholderTrim || t('Yeni Soru'))
             
             // Frontend tipinden backend question type ID'sini async olarak al
             let questionTypeId: number;
@@ -556,7 +558,7 @@ const FormBuilder: React.FC = () => {
               questionTypeId = 1;
             }
             
-            console.log(`🔍 Soru ${index + 1}: "${questionsText}" - Tip: ${q.type} → ID: ${questionTypeId}`);
+            console.log(`🔍 ${t('Soru')} ${index + 1}: "${questionsText}" - Tip: ${q.type} → ID: ${questionTypeId}`);
             
             return {
               questionsText,
@@ -580,7 +582,7 @@ const FormBuilder: React.FC = () => {
         console.log('✅ Tüm sorular kaydedildi');
       }
 
-      setSaveMessage({ type: 'success', message: 'Anket ve sorular başarıyla kaydedildi!' });
+               setSaveMessage({ type: 'success', message: 'Survey and questions saved successfully!' });
       
       // 2 saniye sonra anketler sayfasına yönlendir
       setTimeout(() => {
@@ -596,18 +598,18 @@ const FormBuilder: React.FC = () => {
       });
       
       // Daha detaylı hata mesajı
-      let errorMessage = 'Anket kaydedilirken bir hata oluştu';
+      let errorMessage = t('Anket kaydedilirken bir hata oluştu');
       
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.message) {
         errorMessage = error.message;
       } else if (error.response?.status === 400) {
-        errorMessage = 'Gönderilen veri formatı hatalı. Lütfen tüm alanları kontrol edin.';
+        errorMessage = t('Gönderilen veri formatı hatalı. Lütfen tüm alanları kontrol edin.');
       } else if (error.response?.status === 401) {
-        errorMessage = 'Oturum süresi dolmuş. Lütfen tekrar giriş yapın.';
+        errorMessage = t('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
       } else if (error.response?.status === 500) {
-        errorMessage = 'Sunucu hatası. Lütfen daha sonra tekrar deneyin.';
+        errorMessage = t('Sunucu hatası. Lütfen daha sonra tekrar deneyin.');
       }
       
       setSaveMessage({ type: 'error', message: errorMessage });
@@ -626,7 +628,7 @@ const FormBuilder: React.FC = () => {
   };
 
   const deleteQuestion = (id: string) => {
-    if (window.confirm('Bu soruyu silmek istediğinizden emin misiniz?')) {
+           if (window.confirm('Are you sure you want to delete this question?')) {
       setFormData(prev => ({
         ...prev,
         questions: prev.questions.filter(q => q.id !== id)
@@ -656,7 +658,7 @@ const FormBuilder: React.FC = () => {
 
       // Kaydetme için mevcut handleSaveForm içindeki hazır veriyi tekrar oluşturalım
       if (!formData.title.trim() || formData.questions.length === 0) {
-        alert('Yayınlamak için başlık ve en az bir soru gereklidir.');
+        alert(t('Yayınlamak için başlık ve en az bir soru gereklidir.'));
         return null;
       }
 
@@ -708,9 +710,10 @@ const FormBuilder: React.FC = () => {
           formData.questions.map(async (q, index) => {
             const titleTrim = (q.title || '').trim();
             const placeholderTrim = (q.placeholder || '').trim();
-            const questionsText = titleTrim ? titleTrim : (placeholderTrim || 'Yeni Soru');
+            const questionsText = titleTrim ? titleTrim : (placeholderTrim || t('Yeni Soru'));
             let questionTypeId = 1;
             try { questionTypeId = await getQuestionTypeIdByFrontendType(q.type); } catch {}
+            console.log(`🔍 ${t('Soru')} ${index + 1}: "${questionsText}" - Tip: ${q.type} → ID: ${questionTypeId}`);
             return {
               questionsText,
               questionType: q.type,
@@ -729,7 +732,7 @@ const FormBuilder: React.FC = () => {
       return link;
     } catch (e) {
       console.error('Yayınlama hatası:', e);
-      alert('Yayınlama sırasında hata oluştu.');
+      alert(t('Yayınlama sırasında hata oluştu.'));
       return null;
     }
   };
@@ -803,9 +806,9 @@ const FormBuilder: React.FC = () => {
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-2xl">
                   <ImageIcon className="w-7 h-7 text-white" />
                 </div>
-                <span className="text-2xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
-                  Form Oluşturucu
-                </span>
+                                 <span className="text-2xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
+                   {t('Form Builder')}
+                 </span>
               </motion.div>
             </div>
             
@@ -817,7 +820,7 @@ const FormBuilder: React.FC = () => {
                 whileTap={{ scale: 0.95 }}
               >
                 <Eye className="w-4 h-4" />
-                <span>Önizle</span>
+                                 <span>{t('Önizle')}</span>
               </motion.button>
               
               <motion.button
@@ -827,7 +830,7 @@ const FormBuilder: React.FC = () => {
                 whileTap={{ scale: 0.95 }}
               >
                 <Settings className="w-4 h-4" />
-                <span>Ayarlar</span>
+                                 <span>{t('Ayarlar')}</span>
               </motion.button>
               
               <motion.button
@@ -836,7 +839,7 @@ const FormBuilder: React.FC = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                Yayınla
+                                 {t('Yayınla')}
               </motion.button>
               
               <motion.button
@@ -855,7 +858,7 @@ const FormBuilder: React.FC = () => {
                 ) : (
                   <Save className="w-4 h-4" />
                 )}
-                <span>{isSaving ? 'Kaydediliyor...' : 'Kaydet'}</span>
+                                 <span>{isSaving ? t('Saving...') : t('Kaydet')}</span>
               </motion.button>
             </div>
           </div>
@@ -872,7 +875,7 @@ const FormBuilder: React.FC = () => {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <h3 className="text-lg font-semibold text-white mb-6">Soru Türleri</h3>
+                             <h3 className="text-lg font-semibold text-white mb-6">{t('Question Types')}</h3>
               <div className="space-y-3">
                 {questionTypes.map((questionType) => (
                   <motion.button
@@ -914,7 +917,7 @@ const FormBuilder: React.FC = () => {
                   <div className="flex items-center space-x-3">
                     <input
                       type="text"
-                      placeholder="Form başlığı..."
+                      placeholder={t('Form title...')}
                       value={formData.title}
                       onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                       className="flex-1 text-2xl font-bold bg-transparent border-none outline-none text-white placeholder-blue-200"
@@ -926,12 +929,12 @@ const FormBuilder: React.FC = () => {
                         className="flex items-center space-x-2 px-3 py-1 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-400/30 rounded-full"
                       >
                         <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse"></div>
-                        <span className="text-sm font-medium text-indigo-300">AI Destekli</span>
+                                                 <span className="text-sm font-medium text-indigo-300">AI Powered</span>
                       </motion.div>
                     )}
                   </div>
                   <textarea
-                    placeholder="Form açıklaması..."
+                                         placeholder={t('Form description...')}
                     value={formData.description}
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                     className="w-full text-lg bg-transparent border-none outline-none text-blue-200 placeholder-blue-300 resize-none"
@@ -947,7 +950,7 @@ const FormBuilder: React.FC = () => {
                       whileTap={{ scale: 0.95 }}
                     >
                       <ImageIcon className="w-4 h-4" />
-                      <span>Anket Resmi</span>
+                                             <span>{t('Survey Image')}</span>
                     </motion.button>
                     
                     {/* Yüklenen Resim Önizlemesi */}
@@ -968,7 +971,7 @@ const FormBuilder: React.FC = () => {
                         <motion.button
                           onClick={() => {
                             setFormData(prev => ({ ...prev, backgroundImage: '', surveyBackgroundImage: '' }));
-                            setSaveMessage({ type: 'success', message: 'Anket resmi kaldırıldı' });
+                                                         setSaveMessage({ type: 'success', message: t('Anket resmi kaldırıldı') });
                             setTimeout(() => setSaveMessage(null), 3000);
                           }}
                           className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-xl font-medium transition-all duration-300 flex items-center space-x-2"
@@ -976,7 +979,7 @@ const FormBuilder: React.FC = () => {
                           whileTap={{ scale: 0.95 }}
                         >
                           <Trash2 className="w-4 h-4" />
-                          <span>Kaldır</span>
+                                                     <span>Remove</span>
                         </motion.button>
                       </div>
                     )}
@@ -991,8 +994,8 @@ const FormBuilder: React.FC = () => {
                     <div className="w-24 h-24 bg-white/10 rounded-3xl flex items-center justify-center mx-auto mb-6">
                       <Plus className="w-12 h-12 text-blue-300" />
                     </div>
-                    <h3 className="text-xl font-semibold text-white mb-3">İlk sorunuzu ekleyin</h3>
-                    <p className="text-blue-200 mb-6">Sol taraftaki soru türlerinden birini seçerek başlayın</p>
+                                         <h3 className="text-xl font-semibold text-white mb-3">{t('Add your first question')}</h3>
+                                         <p className="text-blue-200 mb-6">{t('Start by selecting one of the question types on the left')}</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -1008,7 +1011,7 @@ const FormBuilder: React.FC = () => {
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center space-x-3">
                             <GripVertical className="w-5 h-5 text-blue-300 cursor-move" />
-                            <span className="text-sm text-blue-300 font-medium">Soru {index + 1}</span>
+                            <span className="text-sm text-blue-300 font-medium">{t('Soru')} {index + 1}</span>
                           </div>
                           <div className="flex items-center space-x-2">
                             <motion.button
@@ -1036,7 +1039,7 @@ const FormBuilder: React.FC = () => {
                             value={question.title}
                             onChange={(e) => updateQuestion(question.id, { title: e.target.value })}
                             className="flex-1 text-lg font-semibold bg-transparent border-none outline-none text-white"
-                            placeholder="Yeni Soru"
+                                                         placeholder="New Question"
                           />
                         </div>
                         
@@ -1053,7 +1056,7 @@ const FormBuilder: React.FC = () => {
                                      updateQuestion(question.id, { options: newOptions });
                                    }}
                                    className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-blue-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent"
-                                   placeholder={`Seçenek ${optionIndex + 1}`}
+                                                                       placeholder={`Option ${optionIndex + 1}`}
                                  />
                                  <motion.button
                                    onClick={() => {
@@ -1078,14 +1081,14 @@ const FormBuilder: React.FC = () => {
                                whileTap={{ scale: 0.95 }}
                              >
                                <Plus className="w-4 h-4" />
-                               <span>Seçenek Ekle</span>
+                                                               <span>Add Option</span>
                              </motion.button>
                            </div>
                          ) : question.type === 'rating' ? (
                            <div className="space-y-3">
                              {/* Icon selector */}
                              <div className="flex items-center space-x-2">
-                               <span className="text-sm text-blue-200">Sembol:</span>
+                               <span className="text-sm text-blue-200">{t('Sembol:')}</span>
                                <div className="flex items-center space-x-2">
                                  <button
                                    type="button"
@@ -1148,11 +1151,11 @@ const FormBuilder: React.FC = () => {
                                  );
                                })}
                              </div>
-                             <div className="text-sm text-blue-300">Seçilen: {question.ratingValue || 0}/{question.maxRating || 5}</div>
+                             <div className="text-sm text-blue-300">{t('Seçilen:')} {question.ratingValue || 0}/{question.maxRating || 5}</div>
                            </div>
                          ) : question.type === 'date' ? (
                            <div className="space-y-2">
-                             <div className="text-sm text-blue-200">Tarih Şablonu</div>
+                             <div className="text-sm text-blue-200">{t('Tarih Şablonu')}</div>
                             <input
                               type="text"
                               placeholder="gg.aa.yyyy"
@@ -1169,7 +1172,7 @@ const FormBuilder: React.FC = () => {
                               }}
                               className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-blue-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent"
                             />
-                             <div className="text-sm text-blue-300">Format: YYYY-MM-DD</div>
+                             <div className="text-sm text-blue-300">{t('Format: YYYY-MM-DD')}</div>
                            </div>
                           ) : (
                             <input
@@ -1177,7 +1180,7 @@ const FormBuilder: React.FC = () => {
                               value={question.placeholder || ''}
                               onChange={(e) => updateQuestion(question.id, { placeholder: e.target.value })}
                               className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-blue-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent"
-                              placeholder="Placeholder metni..."
+                              placeholder="Placeholder text..."
                             />
                           )}
                         
@@ -1189,7 +1192,7 @@ const FormBuilder: React.FC = () => {
                               onChange={(e) => updateQuestion(question.id, { required: e.target.checked })}
                               className="w-4 h-4 text-blue-500 bg-white/10 border-white/20 rounded focus:ring-blue-400"
                             />
-                            <span className="text-sm text-blue-200">Zorunlu</span>
+                                                         <span className="text-sm text-blue-200">Required</span>
                           </label>
                         </div>
                       </motion.div>
@@ -1219,13 +1222,13 @@ const FormBuilder: React.FC = () => {
                     <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
                   )}
                   <div className="relative z-10">
-                  <h2 className="text-2xl font-bold text-white mb-6">Form Önizleme</h2>
+                  <h2 className="text-2xl font-bold text-white mb-6">{t('Form Önizleme')}</h2>
                   <div className="bg-white/5 rounded-2xl p-6">
-                    <h3 className="text-xl font-semibold text-white mb-4">{formData.title || 'Form Başlığı'}</h3>
-                    <p className="text-blue-200 mb-6">{formData.description || 'Form açıklaması'}</p>
+                    <h3 className="text-xl font-semibold text-white mb-4">{formData.title || t('Form Başlığı')}</h3>
+                    <p className="text-blue-200 mb-6">{formData.description || t('Form açıklaması')}</p>
                     
                     {formData.questions.length === 0 ? (
-                      <p className="text-blue-300 text-center py-8">Henüz soru eklenmemiş</p>
+                      <p className="text-blue-300 text-center py-8">{t('Henüz soru eklenmemiş')}</p>
                     ) : (
                       <div className="space-y-6">
                         {formData.questions.map((question) => (
@@ -1237,7 +1240,7 @@ const FormBuilder: React.FC = () => {
                             {question.type === 'text' && (
                               <input
                                 type="text"
-                                placeholder={question.placeholder || 'Yanıtınızı yazın...'}
+                                placeholder={question.placeholder || t('Yanıtınızı yazın...')}
                                 className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-blue-200"
                                 disabled
                               />
@@ -1245,7 +1248,7 @@ const FormBuilder: React.FC = () => {
                             
                             {question.type === 'textarea' && (
                               <textarea
-                                placeholder={question.placeholder || 'Yanıtınızı yazın...'}
+                                placeholder={question.placeholder || t('Yanıtınızı yazın...')}
                                 className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-blue-200"
                                 rows={3}
                                 disabled
@@ -1286,7 +1289,7 @@ const FormBuilder: React.FC = () => {
                             
                             {question.type === 'select' && (
                               <select className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white" disabled>
-                                <option>Seçenek seçin...</option>
+                                <option>{t('Seçenek seçin...')}</option>
                                 {question.options?.map((option, optionIndex) => (
                                   <option key={optionIndex} value={option}>{option}</option>
                                 ))}
@@ -1315,12 +1318,12 @@ const FormBuilder: React.FC = () => {
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.6, delay: 0.2 }}
                 >
-                  <h2 className="text-2xl font-bold text-white mb-6">Form Ayarları</h2>
+                  <h3 className="text-lg font-semibold text-white">{t('Form Ayarları')}</h3>
                   
                   <div className="space-y-6">
                     {/* Kategori */}
                     <div>
-                      <label className="block text-sm font-medium text-blue-200 mb-2">Kategori</label>
+                      <label className="block text-sm font-medium text-blue-200 mb-2">{t('Kategori')}</label>
                       <select
                         value={formData.category}
                         onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
@@ -1338,7 +1341,7 @@ const FormBuilder: React.FC = () => {
 
                     {/* Durum */}
                     <div>
-                      <label className="block text-sm font-medium text-blue-200 mb-2">Durum</label>
+                      <label className="block text-sm font-medium text-blue-200 mb-2">{t('Durum')}</label>
                       <select
                         value={formData.status}
                         onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as 'active' | 'draft' | 'archived' }))}
@@ -1352,7 +1355,7 @@ const FormBuilder: React.FC = () => {
 
                     {/* Etiketler */}
                     <div>
-                      <label className="block text-sm font-medium text-blue-200 mb-2">Etiketler</label>
+                      <label className="block text-sm font-medium text-blue-200 mb-2">{t('Etiketler')}</label>
                       <div className="flex flex-wrap gap-2 mb-2">
                         {formData.tags.map((tag, index) => (
                           <span key={index} className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm flex items-center space-x-2">
@@ -1372,7 +1375,7 @@ const FormBuilder: React.FC = () => {
                       <div className="flex space-x-2">
                         <input
                           type="text"
-                          placeholder="Yeni etiket ekle..."
+                          placeholder={t('Yeni etiket ekle...')}
                           onKeyPress={(e) => {
                             if (e.key === 'Enter' && e.currentTarget.value.trim()) {
                               setFormData(prev => ({ 
@@ -1397,14 +1400,14 @@ const FormBuilder: React.FC = () => {
                           }}
                           className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
                         >
-                          Ekle
+                          {t('Ekle')}
                         </button>
                       </div>
                     </div>
 
                     {/* Form Ayarları */}
                     <div className="space-y-4">
-                      <h3 className="text-lg font-semibold text-white">Form Ayarları</h3>
+                      <h3 className="text-lg font-semibold text-white">{t('Form Ayarları')}</h3>
                       
                       <label className="flex items-center space-x-3">
                         <input
@@ -1416,7 +1419,7 @@ const FormBuilder: React.FC = () => {
                           }))}
                           className="w-4 h-4 text-blue-500 bg-white/10 border-white/20 rounded focus:ring-blue-400"
                         />
-                        <span className="text-blue-200">Anonim yanıtlara izin ver</span>
+                        <span className="text-blue-200">{t('Anonim yanıtlara izin ver')}</span>
                       </label>
                       
                       <label className="flex items-center space-x-3">
@@ -1429,7 +1432,7 @@ const FormBuilder: React.FC = () => {
                           }))}
                           className="w-4 h-4 text-blue-500 bg-white/10 border-white/20 rounded focus:ring-blue-400"
                         />
-                        <span className="text-blue-200">İlerleme çubuğunu göster</span>
+                        <span className="text-blue-200">{t('İlerleme çubuğunu göster')}</span>
                       </label>
                       
                       <label className="flex items-center space-x-3">
@@ -1442,7 +1445,7 @@ const FormBuilder: React.FC = () => {
                           }))}
                           className="w-4 h-4 text-blue-500 bg-white/10 border-white/20 rounded focus:ring-blue-400"
                         />
-                        <span className="text-blue-200">Çoklu yanıtlara izin ver</span>
+                        <span className="text-blue-200">{t('Çoklu yanıtlara izin ver')}</span>
                       </label>
                     </div>
                   </div>
@@ -1468,11 +1471,11 @@ const FormBuilder: React.FC = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
             >
-              <h3 className="text-2xl font-semibold text-white mb-6">Formu yayınlayın</h3>
+              <h3 className="text-2xl font-semibold text-white mb-6">{t('Formu yayınlayın')}</h3>
               <div className="space-y-4">
                 <div>
-                  <div className="text-blue-200 mb-1">Katılımcılar</div>
-                  <div className="text-white">Bağlantıya sahip olan herkes</div>
+                  <div className="text-blue-200 mb-1">{t('Katılımcılar')}</div>
+                  <div className="text-white">{t('Bağlantıya sahip olan herkes')}</div>
                 </div>
                 {publishedLink && (
                   <div className="bg-white/5 border border-white/20 rounded-xl p-3 text-blue-200 break-all flex items-center justify-between">
@@ -1481,13 +1484,13 @@ const FormBuilder: React.FC = () => {
                       onClick={async () => {
                         try {
                           await navigator.clipboard.writeText(publishedLink);
-                          setCopyInfo('Kopyalandı');
+                          setCopyInfo(t('Kopyalandı'));
                           setTimeout(() => setCopyInfo(null), 2000);
                         } catch {}
                       }}
                       className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm"
                     >
-                      {copyInfo || 'Kopyala'}
+                      {copyInfo || t('Kopyala')}
                     </button>
                   </div>
                 )}
@@ -1499,7 +1502,7 @@ const FormBuilder: React.FC = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  Kapat
+                  {t('Kapat')}
                 </motion.button>
                 <motion.button
                   onClick={async () => {
@@ -1514,7 +1517,7 @@ const FormBuilder: React.FC = () => {
                   whileHover={{ scale: isPublishing ? 1 : 1.05 }}
                   whileTap={{ scale: isPublishing ? 1 : 0.95 }}
                 >
-                  {isPublishing ? 'Yayınlanıyor...' : 'Yayınla'}
+                  {isPublishing ? t('Yayınlanıyor...') : t('Yayınla')}
                 </motion.button>
               </div>
             </motion.div>
@@ -1545,8 +1548,8 @@ const FormBuilder: React.FC = () => {
                   <div className="flex items-center space-x-3">
                     <Lock className="w-5 h-5 text-blue-300" />
                     <div>
-                      <div className="text-white font-medium">Düzenleyici görünümü</div>
-                      <div className="text-blue-200 text-sm">Yalnızca erişimi olan kişiler bu bağlantıyı kullanarak açabilir</div>
+                      <div className="text-white font-medium">{t('Düzenleyici görünümü')}</div>
+                      <div className="text-blue-200 text-sm">{t('Yalnızca erişimi olan kişiler bu bağlantıyı kullanarak açabilir')}</div>
                     </div>
                   </div>
                   <select
@@ -1554,8 +1557,8 @@ const FormBuilder: React.FC = () => {
                     onChange={(e) => setEditorVisibility(e.target.value as 'restricted' | 'anyone')}
                     className="bg-white/10 text-white border border-white/20 rounded-xl px-3 py-2"
                   >
-                    <option value="restricted">Kısıtlanmış</option>
-                    <option value="anyone">Herkes</option>
+                    <option value="restricted">{t('Kısıtlanmış')}</option>
+                    <option value="anyone">{t('Herkes')}</option>
                   </select>
                 </div>
               </div>
@@ -1566,8 +1569,8 @@ const FormBuilder: React.FC = () => {
                   <div className="flex items-center space-x-3">
                     <Globe className="w-5 h-5 text-green-300" />
                     <div>
-                      <div className="text-white font-medium">Katılımcı görünümü</div>
-                      <div className="text-blue-200 text-sm">Bu bağlantıya sahip her internet kullanıcısı yanıt verebilir</div>
+                      <div className="text-white font-medium">{t('Katılımcı görünümü')}</div>
+                      <div className="text-blue-200 text-sm">{t('Bu bağlantıya sahip her internet kullanıcısı yanıt verebilir')}</div>
                     </div>
                   </div>
                   <select
@@ -1575,8 +1578,8 @@ const FormBuilder: React.FC = () => {
                     onChange={(e) => setParticipantVisibility(e.target.value as 'link' | 'signedin')}
                     className="bg-white/10 text-white border border-white/20 rounded-xl px-3 py-2"
                   >
-                    <option value="link">Bağlantıya sahip olan herkes</option>
-                    <option value="signedin">Giriş yapan kullanıcılar</option>
+                    <option value="link">{t('Bağlantıya sahip olan herkes')}</option>
+                    <option value="signedin">{t('Giriş yapan kullanıcılar')}</option>
                   </select>
                 </div>
               </div>
@@ -1588,7 +1591,7 @@ const FormBuilder: React.FC = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  Bitti
+                  {t('Bitti')}
                 </motion.button>
               </div>
             </motion.div>
@@ -1611,8 +1614,8 @@ const FormBuilder: React.FC = () => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
             >
-              <h3 className="text-2xl font-semibold text-white mb-2 text-center">Anket Resmi Yükle</h3>
-              <p className="text-blue-200 text-center mb-6">Anketinizin görsel kimliğini belirlemek için bir resim seçin</p>
+              <h3 className="text-2xl font-semibold text-white mb-2 text-center">{t('Anket Resmi Yükle')}</h3>
+              <p className="text-blue-200 text-center mb-6">{t('Anketinizin görsel kimliğini belirlemek için bir resim seçin')}</p>
               <div 
                 className="border-2 border-dashed border-blue-400/50 rounded-2xl p-8 text-center transition-all duration-300"
                 onDragOver={(e) => {
@@ -1632,7 +1635,7 @@ const FormBuilder: React.FC = () => {
                     
                     // Dosya boyutu kontrolü
                     if (file.size > 5 * 1024 * 1024) {
-                      setSaveMessage({ type: 'error', message: 'Dosya boyutu 5MB\'dan küçük olmalıdır' });
+                      setSaveMessage({ type: 'error', message: 'File size must be smaller than 5MB' });
                       return;
                     }
                     
@@ -1646,7 +1649,7 @@ const FormBuilder: React.FC = () => {
                     } else {
                       setSaveMessage({ 
                         type: 'error', 
-                        message: `Geçersiz dosya formatı. Sadece JPG, PNG, GIF ve WebP dosyaları kabul edilir. Seçilen dosya: ${file.name}` 
+                        message: t('Geçersiz dosya formatı. Sadece JPG, PNG, GIF ve WebP dosyaları kabul edilir. Seçilen dosya: ') + file.name 
                       });
                     }
                   }
@@ -1655,7 +1658,7 @@ const FormBuilder: React.FC = () => {
                 {isUploadingImage ? (
                   <div className="space-y-4">
                     <div className="w-16 h-16 border-4 border-blue-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                    <p className="text-blue-200">Anket resmi yükleniyor...</p>
+                    <p className="text-blue-200">{t('Anket resmi yükleniyor...')}</p>
                     <div className="w-full bg-white/20 rounded-full h-2">
                       <div 
                         className="bg-gradient-to-r from-blue-500 to-indigo-600 h-2 rounded-full transition-all duration-300"
@@ -1667,8 +1670,8 @@ const FormBuilder: React.FC = () => {
                 ) : (
                   <>
                     <Upload className="w-16 h-16 text-blue-400 mx-auto mb-4" />
-                    <p className="text-blue-200 mb-2">Anket resmi dosyasını buraya sürükleyin</p>
-                    <p className="text-blue-300 text-sm mb-6">veya aşağıdaki butona tıklayarak seçin</p>
+                    <p className="text-blue-200 mb-2">{t('Anket resmi dosyasını buraya sürükleyin')}</p>
+                    <p className="text-blue-300 text-sm mb-6">{t('veya aşağıdaki butona tıklayarak seçin')}</p>
                   </>
                 )}
                 <input
@@ -1693,7 +1696,7 @@ const FormBuilder: React.FC = () => {
                   }`}
                 >
                   <ImageIcon className="w-5 h-5" />
-                  <span>{isUploadingImage ? 'Yükleniyor...' : 'Resim Seç'}</span>
+                  <span>{isUploadingImage ? t('Yükleniyor') : t('Resim Seç')}</span>
                 </label>
               </div>
               <div className="flex justify-end mt-6">
@@ -1703,7 +1706,7 @@ const FormBuilder: React.FC = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  İptal
+                  {t('İptal')}
                 </motion.button>
               </div>
             </motion.div>

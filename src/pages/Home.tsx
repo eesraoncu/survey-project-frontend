@@ -18,6 +18,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { surveyService, type Survey } from '../services/surveyService';
 import { aiService } from '../services/aiService';
 
@@ -32,6 +33,7 @@ const Home: React.FC = () => {
   const [isAILoading, setIsAILoading] = useState(false);
   const [aiError, setAiError] = useState<string>('');
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   // Şablon template verileri
   const getTemplateFormData = (templateId: string) => {
@@ -293,9 +295,9 @@ const Home: React.FC = () => {
 
   // Trending surveys
   const trendingSurveys = [
-    { title: 'Uzaktan Çalışma Deneyimi', trend: '+156%', category: 'İş' },
-    { title: 'Sürdürülebilir Yaşam', trend: '+89%', category: 'Çevre' },
-    { title: 'Dijital Dönüşüm', trend: '+234%', category: 'Teknoloji' }
+    { title: t('Uzaktan Çalışma Deneyimi'), trend: '+156%', category: t('İş') },
+    { title: t('Sürdürülebilir Yaşam'), trend: '+89%', category: t('Çevre') },
+    { title: t('Dijital Dönüşüm'), trend: '+234%', category: t('Teknoloji') }
   ];
 
   const templates = [
@@ -585,63 +587,97 @@ const Home: React.FC = () => {
         ))}
       </div>
 
-      <main className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 font-sans">
         <motion.div
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
           {/* Hero Section */}
-          <section className="text-center mb-16">
-            <motion.h1 
-              className="text-6xl font-bold mb-6"
+          <section className="text-center mb-20">
+            <motion.div
+              className="relative"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
             >
-              <span className="bg-gradient-to-r from-white via-blue-200 to-indigo-200 bg-clip-text text-transparent">
-                Anketlerinizi
-              </span>
-              <br />
-              <span className="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
-                AI ile Güçlendirin
-              </span>
-            </motion.h1>
+              <motion.h1 
+                className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-200 to-indigo-300 mb-6 leading-tight tracking-tight"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8 }}
+              >
+                {t('Anketlerinizi AI ile Güçlendirin')}
+              </motion.h1>
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-indigo-600/20 blur-3xl -z-10"></div>
+            </motion.div>
+            
             <motion.p 
-              className="text-xl text-blue-200 mb-8 max-w-3xl mx-auto"
-              initial={{ opacity: 0, y: 20 }}
+              className="text-lg md:text-xl lg:text-2xl text-blue-100 max-w-4xl mx-auto leading-relaxed font-normal tracking-wide"
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
             >
-              Profesyonel anket oluşturucu ile benzersiz sorular hazırlayın, 
-              trend analizi yapın ve daha fazla yanıt alın.
+              {t('Profesyonel anket oluşturucu ile benzersiz sorular hazırlayın, trend analizi yapın ve daha fazla yanıt alın.')}
             </motion.p>
+            
+            <motion.div
+              className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+            >
+              <div className="flex items-center space-x-2 text-blue-200 text-sm">
+                <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                <span className="font-medium">AI Destekli</span>
+              </div>
+              <div className="flex items-center space-x-2 text-purple-200 text-sm">
+                <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                <span className="font-medium">Gerçek Zamanlı</span>
+              </div>
+              <div className="flex items-center space-x-2 text-indigo-200 text-sm">
+                <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse"></div>
+                <span className="font-medium">Güvenli</span>
+              </div>
+            </motion.div>
           </section>
 
-          {/* Tab Navigation */}
-          <div className="flex justify-center mb-12">
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-2 border border-white/20">
-              {[
-                { id: 'templates', label: 'Şablonlar', icon: <FileText className="w-5 h-5" /> },
-                { id: 'trending', label: 'Trendler', icon: <TrendingUp className="w-5 h-5" /> }
-              ].map((tab) => (
-                <motion.button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all ${
-                    activeTab === tab.id
-                      ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-2xl'
-                      : 'text-blue-200 hover:text-white hover:bg-white/10'
+            {/* Tab Buttons */}
+            <div className="flex justify-center mb-16">
+              <motion.div 
+                className="bg-white/10 backdrop-blur-xl rounded-3xl p-2 border border-white/20 shadow-2xl shadow-blue-500/10"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+              >
+                <button
+                  onClick={() => setActiveTab('templates')}
+                  className={`px-6 py-3 rounded-2xl text-sm font-semibold transition-all duration-300 relative overflow-hidden ${
+                    activeTab === 'templates'
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30'
+                      : 'text-blue-100 hover:text-white hover:bg-white/10'
                   }`}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
                 >
-                  {tab.icon}
-                  <span>{tab.label}</span>
-                </motion.button>
-              ))}
+                  {activeTab === 'templates' && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-indigo-400/20 animate-pulse"></div>
+                  )}
+                  <span className="relative z-10">{t('Şablonlar')}</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('trending')}
+                  className={`px-6 py-3 rounded-2xl text-sm font-semibold transition-all duration-300 relative overflow-hidden ${
+                    activeTab === 'trending'
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30'
+                      : 'text-blue-100 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  {activeTab === 'trending' && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-indigo-400/20 animate-pulse"></div>
+                  )}
+                  <span className="relative z-10">{t('Trendler')}</span>
+                </button>
+              </motion.div>
             </div>
-          </div>
 
           {/* Content based on active tab */}
           <AnimatePresence mode="wait">
@@ -653,184 +689,221 @@ const Home: React.FC = () => {
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                {/* New Form Section */}
+                {/* Yeni Form Oluşturma Bölümü */}
                 <section className="mb-20">
-                  <div className="text-center mb-12">
-                    <h2 className="text-4xl font-bold text-white mb-4">
-                      Yeni bir form hazırlamaya başlayın
-                    </h2>
-                    <p className="text-blue-200 text-lg max-w-2xl mx-auto">
-                      Form oluşturucu ile hızlıca profesyonel anketler hazırlayın
-                    </p>
-                  </div>
+                  <motion.div
+                    className="text-center mb-12"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.3 }}
+                  >
+                    <motion.h2 
+                      className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-200 to-indigo-300 mb-4 leading-tight tracking-tight"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.6, delay: 0.3 }}
+                    >
+                      {t('Yeni bir form hazırlamaya başlayın')}
+                    </motion.h2>
+                    <motion.div 
+                      className="w-20 h-0.5 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full mx-auto"
+                      initial={{ opacity: 0, scaleX: 0 }}
+                      animate={{ opacity: 1, scaleX: 1 }}
+                      transition={{ duration: 0.6, delay: 0.5 }}
+                    ></motion.div>
+                  </motion.div>
                   
-                  {/* Quick Actions */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16 max-w-4xl mx-auto">
-                    {/* Boş Form */}
+                  <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                    {/* Boş Form Kartı */}
                     <motion.div
-                      className="group cursor-pointer"
-                      whileHover={{ y: -8, scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                      className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20 hover:border-white/40 transition-all duration-300 cursor-pointer group shadow-lg hover:shadow-2xl hover:shadow-orange-500/20"
+                      whileHover={{ scale: 1.02, y: -5 }}
+                      initial={{ opacity: 0, x: -30 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.6, delay: 0.4 }}
                       onClick={() => navigate('/form-builder')}
                     >
-                      <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl rounded-3xl p-8 border border-white/20 shadow-2xl group-hover:shadow-3xl transition-all duration-500 h-full">
-                        <div className="text-center">
-                          <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl group-hover:shadow-2xl group-hover:scale-110 transition-all duration-300">
-                            <Plus className="w-8 h-8 text-white" />
-                    </div>
-                          <h3 className="text-xl font-bold text-white mb-3 group-hover:text-yellow-200 transition-colors">
-                            Boş Form
-                          </h3>
-                          <p className="text-blue-200 text-sm mb-4">
-                            Sıfırdan yeni bir form oluşturun
-                          </p>
-                          <div className="flex items-center justify-center text-xs text-blue-300">
-                            <Sparkles className="w-3 h-3 mr-1" />
-                            AI Destekli
-                  </div>
+                      <div className="text-center">
+                        <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                          <Plus className="w-8 h-8 text-white" />
                         </div>
+                        <h3 className="text-xl font-semibold text-white mb-3">{t('Boş Form')}</h3>
+                        <p className="text-blue-100 mb-4 text-sm leading-relaxed">{t('Sıfırdan yeni bir form oluşturun')}</p>
+                        <span className="inline-block bg-orange-500/20 text-orange-300 px-3 py-1 rounded-full text-sm font-medium">
+                          {t('AI Destekli')}
+                        </span>
                       </div>
                     </motion.div>
-                  
-                    {/* AI Oluşturucu */}
+
+                    {/* AI Oluşturucu Kartı */}
                     <motion.div
-                      className="group cursor-pointer"
-                      whileHover={{ y: -8, scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={openAIModal}
+                      className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20 hover:border-white/40 transition-all duration-300 cursor-pointer group shadow-lg hover:shadow-2xl hover:shadow-purple-500/20"
+                      whileHover={{ scale: 1.02, y: -5 }}
+                      initial={{ opacity: 0, x: 30 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.6, delay: 0.5 }}
+                      onClick={() => setShowAIModal(true)}
                     >
-                      <div className="bg-gradient-to-br from-purple-500/20 to-blue-500/20 backdrop-blur-xl rounded-3xl p-8 border border-purple-300/30 shadow-2xl group-hover:shadow-3xl transition-all duration-500 h-full">
-                        <div className="text-center">
-                          <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl group-hover:shadow-2xl group-hover:scale-110 transition-all duration-300">
-                            <Sparkles className="w-8 h-8 text-white animate-pulse" />
-                          </div>
-                          <h3 className="text-xl font-bold text-white mb-3 group-hover:text-purple-200 transition-colors">
-                            AI Oluşturucu
-                          </h3>
-                          <p className="text-blue-200 text-sm mb-4">
-                            Yapay zeka ile otomatik oluşturun
-                          </p>
-                          <div className="flex items-center justify-center text-xs text-purple-300">
-                            <Rocket className="w-3 h-3 mr-1" />
-                            Akıllı Öneriler
-                          </div>
+                      <div className="text-center">
+                        <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                          <Sparkles className="w-8 h-8 text-white" />
                         </div>
+                        <h3 className="text-xl font-semibold text-white mb-3">{t('AI Oluşturucu')}</h3>
+                        <p className="text-blue-100 mb-4 text-sm leading-relaxed">{t('Yapay zeka ile otomatik oluşturun')}</p>
+                        <span className="inline-block bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full text-sm font-medium">
+                          {t('Akıllı Öneriler')}
+                        </span>
                       </div>
                     </motion.div>
-
-
-                  </div>
-
-                    {/* Template Gallery */}
-                  <div className="max-w-7xl mx-auto">
-                    <div className="flex items-center justify-between mb-8">
-                      <div>
-                        <h3 className="text-2xl font-bold text-white mb-2">Şablon Galerisi</h3>
-                        <p className="text-blue-200">Hazır şablonlar ile hızlıca başlayın</p>
-                      </div>
-                        <div className="flex items-center space-x-3">
-                          <motion.button 
-                          className="p-2 hover:bg-white/10 rounded-xl text-blue-300 hover:text-white transition-colors"
-                            whileHover={{ scale: 1.1, rotate: 5 }}
-                          >
-                          <Grid3X3 className="w-5 h-5" />
-                          </motion.button>
-                          <motion.button 
-                          className="p-2 hover:bg-white/10 rounded-xl text-blue-300 hover:text-white transition-colors"
-                            whileHover={{ scale: 1.1, rotate: -5 }}
-                          >
-                            <MoreVertical className="w-5 h-5" />
-                          </motion.button>
-                        </div>
-                      </div>
-                      
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-                        {templates.map((template, index) => (
-                          <motion.div
-                            key={template.id}
-                            variants={itemVariants}
-                            custom={index}
-                          className="group cursor-pointer relative"
-                            whileHover={{ 
-                              scale: 1.05, 
-                            rotateY: 5,
-                              z: 50
-                            }}
-                            transition={{ type: "spring", stiffness: 300 }}
-                          onClick={() => handleTemplateClick(template.id)}
-                        >
-                          {/* Popular Badge */}
-                          {template.popular && (
-                            <div className="absolute -top-2 -right-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full z-20 shadow-lg">
-                              ⭐ Popüler
-                            </div>
-                          )}
-                          
-                          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 overflow-hidden group-hover:shadow-3xl transition-all duration-300 h-full">
-                            {/* Icon Section */}
-                            <div className={`bg-gradient-to-br ${template.color} p-4 flex items-center justify-center relative overflow-hidden`}>
-                              <div className="text-white relative z-10 transform group-hover:scale-110 transition-transform duration-300">
-                                  {template.icon}
-                                </div>
-                                <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                              </div>
-                            
-                            {/* Content Section */}
-                            <div className="p-4 flex flex-col flex-grow">
-                              {/* Header */}
-                              <div className="flex items-center justify-between mb-2">
-                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                                  template.difficulty === 'Kolay' ? 'bg-green-500/20 text-green-300' :
-                                  template.difficulty === 'Orta' ? 'bg-yellow-500/20 text-yellow-300' :
-                                  'bg-red-500/20 text-red-300'
-                                }`}>
-                                  {template.difficulty}
-                                </span>
-                                <span className="text-xs text-blue-300">
-                                  {template.time}
-                                </span>
-                              </div>
-                              
-                              {/* Title */}
-                              <h4 className="text-white font-bold text-sm leading-tight mb-2 group-hover:text-blue-200 transition-colors">
-                                  {template.title}
-                                </h4>
-                              
-                              {/* Description */}
-                              <p className="text-blue-200 text-xs leading-relaxed mb-3 flex-grow line-clamp-2">
-                                {template.description}
-                              </p>
-                              
-                              {/* Features */}
-                              <div className="space-y-2">
-                                <div className="flex flex-wrap gap-1">
-                                  {template.features.slice(0, 2).map((feature, idx) => (
-                                    <span key={idx} className="text-xs bg-blue-500/20 text-blue-200 px-2 py-0.5 rounded-full">
-                                      {feature}
-                                    </span>
-                                  ))}
-                                  {template.features.length > 2 && (
-                                    <span className="text-xs bg-gray-500/20 text-gray-300 px-2 py-0.5 rounded-full">
-                                      +{template.features.length - 2}
-                                    </span>
-                                  )}
-                    </div>
-                  </div>
-                  
-                              {/* Call to Action */}
-                              <div className="mt-3 pt-2 border-t border-white/10">
-                                <div className="flex items-center justify-center text-blue-300 group-hover:text-white transition-colors">
-                                  <Plus className="w-3 h-3 mr-1" />
-                                  <span className="text-xs font-medium">Kullan</span>
-                        </div>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-                    </div>
                   </div>
                 </section>
+
+            {/* Şablon Galerisi */}
+            <section className="mb-20">
+              <motion.div
+                className="text-center mb-12"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.6 }}
+              >
+                <motion.h2 
+                  className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-200 to-indigo-300 mb-4 leading-tight tracking-tight"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.6 }}
+                >
+                  {t('Hazır şablonlar ile hızlıca başlayın')}
+                </motion.h2>
+                <motion.div 
+                  className="w-20 h-0.5 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full mx-auto"
+                  initial={{ opacity: 0, scaleX: 0 }}
+                  animate={{ opacity: 1, scaleX: 1 }}
+                  transition={{ duration: 0.6, delay: 0.8 }}
+                ></motion.div>
+              </motion.div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+                {/* İletişim Bilgileri */}
+                <motion.div
+                  className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-white/40 transition-all duration-300 cursor-pointer group shadow-lg hover:shadow-2xl hover:shadow-blue-500/20"
+                  whileHover={{ scale: 1.05, y: -5 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.7 }}
+                >
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                      <Building className="w-6 h-6 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-white mb-2 text-base leading-tight">{t('İletişim Bilgileri')}</h3>
+                    <div className="flex items-center justify-center space-x-2 mb-4">
+                      <span className="text-xs font-medium text-green-300 bg-green-500/20 px-2 py-1 rounded-full">{t('Kolay')}</span>
+                      <span className="text-xs text-blue-300">•</span>
+                      <span className="text-xs font-medium text-blue-300">{t('2 dk')}</span>
+                    </div>
+                    <button className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white text-sm font-semibold py-2.5 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105">
+                      {t('Kullan')}
+                    </button>
+                  </div>
+                </motion.div>
+
+                {/* Etkinlik LCV Formu */}
+                <motion.div
+                  className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-white/40 transition-all duration-300 cursor-pointer group shadow-lg hover:shadow-2xl hover:shadow-blue-500/20"
+                  whileHover={{ scale: 1.05, y: -5 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.8 }}
+                >
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                      <Calendar className="w-6 h-6 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-white mb-2 text-base leading-tight">{t('Etkinlik LCV Formu')}</h3>
+                    <div className="flex items-center justify-center space-x-2 mb-4">
+                      <span className="text-xs font-medium text-blue-300 bg-blue-500/20 px-2 py-1 rounded-full">{t('Orta')}</span>
+                      <span className="text-xs text-blue-300">•</span>
+                      <span className="text-xs font-medium text-blue-300">{t('5 dk')}</span>
+                    </div>
+                    <button className="w-full bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white text-sm font-semibold py-2.5 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105">
+                      {t('Kullan')}
+                    </button>
+                  </div>
+                </motion.div>
+
+                {/* Parti Davetiyesi */}
+                <motion.div
+                  className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-white/40 transition-all duration-300 cursor-pointer group shadow-lg hover:shadow-2xl hover:shadow-pink-500/20"
+                  whileHover={{ scale: 1.05, y: -5 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.9 }}
+                >
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-gradient-to-br from-pink-400 to-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                      <Gift className="w-6 h-6 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-white mb-2 text-base leading-tight">{t('Parti Davetiyesi')}</h3>
+                    <div className="flex items-center justify-center space-x-2 mb-4">
+                      <span className="text-xs font-medium text-pink-300 bg-pink-500/20 px-2 py-1 rounded-full">{t('Kolay')}</span>
+                      <span className="text-xs text-blue-300">•</span>
+                      <span className="text-xs font-medium text-blue-300">{t('3 dk')}</span>
+                    </div>
+                    <button className="w-full bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white text-sm font-semibold py-2.5 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105">
+                      {t('Kullan')}
+                    </button>
+                  </div>
+                </motion.div>
+
+                {/* Tişört İstek Formu */}
+                <motion.div
+                  className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-white/40 transition-all duration-300 cursor-pointer group shadow-lg hover:shadow-2xl hover:shadow-orange-500/20"
+                  whileHover={{ scale: 1.05, y: -5 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 1.0 }}
+                >
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                      <Shirt className="w-6 h-6 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-white mb-2 text-base leading-tight">{t('Tişört İstek Formu')}</h3>
+                    <div className="flex items-center justify-center space-x-2 mb-4">
+                      <span className="text-xs font-medium text-orange-300 bg-orange-500/20 px-2 py-1 rounded-full">{t('Kolay')}</span>
+                      <span className="text-xs text-blue-300">•</span>
+                      <span className="text-xs font-medium text-blue-300">{t('2 dk')}</span>
+                    </div>
+                    <button className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white text-sm font-semibold py-2.5 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105">
+                      {t('Kullan')}
+                    </button>
+                  </div>
+                </motion.div>
+
+                {/* Etkinlik Kayıt Formu */}
+                <motion.div
+                  className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-white/40 transition-all duration-300 cursor-pointer group shadow-lg hover:shadow-2xl hover:shadow-purple-500/20"
+                  whileHover={{ scale: 1.05, y: -5 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 1.1 }}
+                >
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                      <Users className="w-6 h-6 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-white mb-2 text-base leading-tight">{t('Etkinlik Kayıt Formu')}</h3>
+                    <div className="flex items-center justify-center space-x-2 mb-4">
+                      <span className="text-xs font-medium text-purple-300 bg-purple-500/20 px-2 py-1 rounded-full">{t('Orta')}</span>
+                      <span className="text-xs text-blue-300">•</span>
+                      <span className="text-xs font-medium text-blue-300">{t('4 dk')}</span>
+                    </div>
+                    <button className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white text-sm font-semibold py-2.5 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105">
+                      {t('Kullan')}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            </section>
               </motion.div>
             )}
 
@@ -845,7 +918,27 @@ const Home: React.FC = () => {
                 transition={{ duration: 0.3 }}
                 className="space-y-6"
               >
-                <h2 className="text-3xl font-bold text-white text-center mb-8">Trend Anketler</h2>
+                <motion.div
+                  className="text-center mb-12"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                >
+                  <motion.h2 
+                    className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-200 to-indigo-300 mb-4 leading-tight tracking-tight"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.3 }}
+                  >
+                    {t('Trend Anketler')}
+                  </motion.h2>
+                  <motion.div 
+                    className="w-20 h-0.5 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full mx-auto"
+                    initial={{ opacity: 0, scaleX: 0 }}
+                    animate={{ opacity: 1, scaleX: 1 }}
+                    transition={{ duration: 0.6, delay: 0.5 }}
+                  ></motion.div>
+                </motion.div>
                 {trendingSurveys.map((survey, index) => (
                   <motion.div
                     key={index}
@@ -868,7 +961,7 @@ const Home: React.FC = () => {
                       </div>
                       <div className="text-right">
                         <div className="text-2xl font-bold text-green-400">{survey.trend}</div>
-                        <div className="text-sm text-purple-300">Büyüme</div>
+                        <div className="text-sm text-purple-300">{t('Büyüme')}</div>
                       </div>
                     </div>
                   </motion.div>
@@ -879,17 +972,38 @@ const Home: React.FC = () => {
 
           {/* Recent Forms Section */}
           <section className="mt-20">
+            <motion.div 
+              className="text-center mb-12"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.9 }}
+            >
+              <motion.h2 
+                className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-200 to-indigo-300 mb-4 leading-tight tracking-tight"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.9 }}
+              >
+                {t('Latest Forms')}
+              </motion.h2>
+              <motion.div 
+                className="w-20 h-0.5 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full mx-auto"
+                initial={{ opacity: 0, scaleX: 0 }}
+                animate={{ opacity: 1, scaleX: 1 }}
+                transition={{ duration: 0.6, delay: 1.1 }}
+              ></motion.div>
+            </motion.div>
+            
             <div className="flex items-center justify-between mb-8">
-              <h2 className="text-3xl font-bold text-white">Son Formlar</h2>
               <div className="flex items-center space-x-4">
                 <select
                   value={selectedRange}
                   onChange={(e) => setSelectedRange(e.target.value as any)}
                   className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white focus:ring-2 focus:ring-purple-400 focus:border-transparent backdrop-blur-xl"
                 >
-                  <option value="all" className="bg-slate-800">Tümü</option>
-                  <option value="7" className="bg-slate-800">Son 7 gün</option>
-                  <option value="30" className="bg-slate-800">Son 30 gün</option>
+                                     <option value="all" className="bg-slate-800">{t('All')}</option>
+                                     <option value="7" className="bg-slate-800">{t('Last 7 days')}</option>
+                   <option value="30" className="bg-slate-800">{t('Last 30 days')}</option>
                 </select>
                 
                 {/* Pager */}
@@ -961,7 +1075,7 @@ const Home: React.FC = () => {
                             </h3>
                             <div className="flex items-center space-x-2 text-sm text-purple-300">
                               <Users className="w-4 h-4" />
-                              <span>{survey.responses} yanıt</span>
+                              <span>{survey.responses} {t('responses')}</span>
                             </div>
                           </div>
                         </div>
@@ -977,7 +1091,7 @@ const Home: React.FC = () => {
                         <span>{survey.createdAt}</span>
                         <div className="flex items-center space-x-2">
                           <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                          <span>Aktif</span>
+                          <span>{t('Active')}</span>
                         </div>
                       </div>
                     </div>

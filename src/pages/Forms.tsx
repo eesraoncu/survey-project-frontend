@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { surveyService, type Survey } from '../services/surveyService';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { uploadService } from '../services/uploadService';
 
 const Forms: React.FC = () => {
@@ -32,6 +33,7 @@ const Forms: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   // Backend'den anketleri yükle
   useEffect(() => {
@@ -209,7 +211,7 @@ const Forms: React.FC = () => {
       
       setUploadMessage({ 
         type: 'error', 
-        message: error instanceof Error ? error.message : 'Resim yüklenirken bir hata oluştu' 
+        message: error instanceof Error ? error.message : t('Resim yüklenirken bir hata oluştu') 
       });
     } finally {
       setIsUploadingImage(false);
@@ -218,7 +220,7 @@ const Forms: React.FC = () => {
   };
 
   const handleDeleteSurvey = async (surveyId: string) => {
-    if (window.confirm('Bu anketi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) {
+    if (window.confirm(t('Bu anketi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.'))) {
       try {
         console.log('🚀 Anket silme işlemi başlatılıyor...');
         console.log('🆔 Survey ID:', surveyId);
@@ -235,7 +237,7 @@ const Forms: React.FC = () => {
         console.log('✅ Anket başarıyla silindi:', surveyId);
         
         // Başarı mesajı göster
-        alert('Anket başarıyla silindi!');
+        alert(t('Anket başarıyla silindi!'));
         
         // Anketleri yeniden yükle
         loadSurveys();
@@ -243,8 +245,8 @@ const Forms: React.FC = () => {
         console.error('❌ Anket silinirken hata:', error);
         
         // Kullanıcıya daha detaylı hata mesajı göster
-        const errorMessage = error.message || 'Anket silinirken bir hata oluştu. Lütfen tekrar deneyin.';
-        alert(`Hata: ${errorMessage}`);
+        const errorMessage = error.message || t('Anket silinirken bir hata oluştu. Lütfen tekrar deneyin.');
+        alert(`${t('Hata')}: ${errorMessage}`);
       }
     }
   };
@@ -273,21 +275,21 @@ const Forms: React.FC = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'active': return 'Aktif';
-      case 'draft': return 'Taslak';
-      case 'archived': return 'Arşivlenmiş';
-      default: return 'Bilinmiyor';
+             case 'active': return 'Active';
+             case 'draft': return 'Draft';
+             case 'archived': return 'Archived';
+             default: return 'Unknown';
     }
   };
 
   const getCategoryColor = (category: string) => {
     const colors = {
-      'Ürün': 'from-blue-500 to-cyan-500',
-      'Müşteri': 'from-purple-500 to-pink-500',
-      'İnsan Kaynakları': 'from-green-500 to-emerald-500',
-      'Eğitim': 'from-orange-500 to-red-500',
-      'Pazarlama': 'from-indigo-500 to-purple-500',
-      'Teknoloji': 'from-teal-500 to-blue-500'
+      [t('Ürün')]: 'from-blue-500 to-cyan-500',
+      [t('Müşteri')]: 'from-purple-500 to-pink-500',
+      [t('İnsan Kaynakları')]: 'from-green-500 to-emerald-500',
+      [t('Eğitim')]: 'from-orange-500 to-red-500',
+      [t('Pazarlama')]: 'from-indigo-500 to-purple-500',
+      [t('Teknoloji')]: 'from-teal-500 to-blue-500'
     };
     return colors[category as keyof typeof colors] || 'from-gray-500 to-slate-500';
   };
@@ -307,7 +309,7 @@ const Forms: React.FC = () => {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6 }}
               >
-                Anketlerim
+                {t('My Forms')}
               </motion.h1>
               <motion.p 
                 className="text-blue-200 text-lg"
@@ -315,7 +317,7 @@ const Forms: React.FC = () => {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6, delay: 0.1 }}
               >
-                Anket yönetimi ve takibi
+                {t('Anket yönetimi ve takibi')}
               </motion.p>
               {error && (
                 <motion.div 
@@ -337,7 +339,7 @@ const Forms: React.FC = () => {
                 whileTap={{ scale: isLoading ? 1 : 0.95 }}
               >
                 <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
-                <span>Yenile</span>
+                <span>{t('Yenile')}</span>
               </motion.button>
               <motion.button 
                 onClick={() => navigate('/form-builder')}
@@ -346,7 +348,7 @@ const Forms: React.FC = () => {
                 whileTap={{ scale: 0.95 }}
               >
                 <Plus className="w-5 h-5" />
-                <span>Yeni Anket</span>
+                <span>{t('Yeni Anket')}</span>
               </motion.button>
             </div>
           </div>
@@ -365,7 +367,7 @@ const Forms: React.FC = () => {
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-blue-300 w-5 h-5" />
                 <input
                   type="text"
-                  placeholder="Anket ara..."
+                  placeholder={t('Anket ara...')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-2xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-white placeholder-blue-200 backdrop-blur-xl"
@@ -573,15 +575,15 @@ const Forms: React.FC = () => {
                       <div className="grid grid-cols-3 gap-4 mb-4">
                         <div className="text-center">
                           <div className="text-xl font-semibold text-white">{survey.responses || 0}</div>
-                          <div className="text-xs text-purple-300">Yanıt</div>
+                          <div className="text-xs text-purple-300">Response</div>
                         </div>
                         <div className="text-center">
                           <div className="text-xl font-semibold text-white">{survey.views || 0}</div>
-                          <div className="text-xs text-purple-300">Görüntü</div>
+                          <div className="text-xs text-purple-300">{t('Görüntü')}</div>
                         </div>
                         <div className="text-center">
                           <div className="text-xl font-semibold text-white">{survey.completionRate || 0}%</div>
-                          <div className="text-xs text-purple-300">Tamamlanma</div>
+                          <div className="text-xs text-purple-300">{t('Tamamlanma')}</div>
                         </div>
                       </div>
 
@@ -589,7 +591,7 @@ const Forms: React.FC = () => {
                         <span>{survey.lastModified || survey.createdAt}</span>
                         <div className="flex items-center space-x-1">
                           <FileText className="w-4 h-4" />
-                          <span>{survey.questions} soru</span>
+                          <span>{survey.questions} {t('soru')}</span>
                         </div>
                       </div>
                     </div>
@@ -610,12 +612,12 @@ const Forms: React.FC = () => {
                 <table className="w-full">
                   <thead className="bg-white/10">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Anket</th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Durum</th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Kategori</th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Yanıtlar</th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Son Güncelleme</th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">İşlemler</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Survey</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Category</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Responses</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Last Update</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/10">

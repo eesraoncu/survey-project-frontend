@@ -20,6 +20,7 @@ const apiClient = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: false, // CORS için önemli
+  timeout: 120000, // 2 dakika timeout (60 saniye yerine)
 });
 
 // Request interceptor - her istekte token ekle

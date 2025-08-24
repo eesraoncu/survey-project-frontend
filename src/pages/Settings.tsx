@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Settings as SettingsIcon, User, Bell, Shield, Palette, Globe, Key, Trash2, Save } from 'lucide-react'
+import { Settings as SettingsIcon, User, Bell, Shield, Key, Trash2, Save } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { useLanguage } from '../contexts/LanguageContext'
 
 const Settings = () => {
   const { user } = useAuth()
+  const { t } = useLanguage()
   const [activeTab, setActiveTab] = useState('general')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [formData, setFormData] = useState({
@@ -16,81 +18,20 @@ const Settings = () => {
   })
   const [notifications, setNotifications] = useState({
     email: true,
-    push: false,
     weekly: true
   })
   const [privacy, setPrivacy] = useState({
     dataAnalysis: true,
     thirdParty: true
   })
-  const [appearance, setAppearance] = useState({
-    theme: 'light',
-    colorScheme: 'Mavi'
-  })
-  const [language, setLanguage] = useState({
-    interface: 'tr',
-    dateFormat: 'DD/MM/YYYY'
-  })
+
   const [security, setSecurity] = useState({
     twoFactor: false
   })
 
-  // Dil değişikliğini anında uygula
-  const handleLanguageChange = (newLanguage: string) => {
-    setLanguage(prev => ({ ...prev, interface: newLanguage }))
-    
-    // LocalStorage'a kaydet
-    const currentSettings = JSON.parse(localStorage.getItem('userSettings') || '{}')
-    const updatedSettings = { ...currentSettings, language: newLanguage }
-    localStorage.setItem('userSettings', JSON.stringify(updatedSettings))
-    
-    // Sayfa dilini değiştir
-    document.documentElement.lang = newLanguage
-    
-    // Tüm sistem dilini değiştir
-    applyLanguageToSystem(newLanguage)
-    
-    // Başarı mesajı göster
-    setMessage({ type: 'success', text: `Dil ${getLanguageName(newLanguage)} olarak değiştirildi!` })
-    setTimeout(() => setMessage({ type: '', text: '' }), 2000)
-  }
 
-  // Dil adını döndür
-  const getLanguageName = (langCode: string) => {
-    const languageNames: { [key: string]: string } = {
-      'tr': 'Türkçe',
-      'en': 'English',
-      'de': 'Deutsch',
-      'fr': 'Français',
-      'es': 'Español'
-    }
-    return languageNames[langCode] || langCode
-  }
 
-  // Sisteme dil uygula
-  const applyLanguageToSystem = (language: string) => {
-    // HTML lang attribute'unu güncelle
-    document.documentElement.lang = language
-    
-    // LocalStorage'a sistem dili olarak kaydet
-    localStorage.setItem('systemLanguage', language)
-    
-    // Tüm sayfaya dil değişikliği event'i gönder
-    window.dispatchEvent(new CustomEvent('languageChanged', { detail: { language } }))
-    
-    // Sayfa başlığını güncelle
-    const titles: { [key: string]: string } = {
-      'tr': 'Formlar - Ayarlar',
-      'en': 'Forms - Settings',
-      'de': 'Formulare - Einstellungen',
-      'fr': 'Formulaires - Paramètres',
-      'es': 'Formularios - Configuración'
-    }
-    document.title = titles[language] || 'Forms - Settings'
-    
-    // Tüm sayfadaki metinleri güncelle
-    updatePageTexts(language)
-  }
+
 
   // Sayfa metinlerini güncelle
   const updatePageTexts = (language: string) => {
@@ -187,8 +128,7 @@ const Settings = () => {
         'Bildirim Ayarları': 'Notification Settings',
         'E-posta Bildirimleri': 'Email Notifications',
         'Form yanıtları ve güncellemeler için': 'For form responses and updates',
-        'Push Bildirimleri': 'Push Notifications',
-        'Tarayıcı bildirimleri': 'Browser notifications',
+
         'Haftalık Raporlar': 'Weekly Reports',
         'Form performans özetleri': 'Form performance summaries',
         'Gizlilik Ayarları': 'Privacy Settings',
@@ -256,8 +196,7 @@ const Settings = () => {
         'Bildirim Ayarları': 'Benachrichtigungseinstellungen',
         'E-posta Bildirimleri': 'E-Mail-Benachrichtigungen',
         'Form yanıtları ve güncellemeler için': 'Für Formularantworten und Updates',
-        'Push Bildirimleri': 'Push-Benachrichtigungen',
-        'Tarayıcı bildirimleri': 'Browser-Benachrichtigungen',
+
         'Haftalık Raporlar': 'Wöchentliche Berichte',
         'Form performans özetleri': 'Formular-Leistungsübersichten',
         'Gizlilik Ayarları': 'Datenschutzeinstellungen',
@@ -309,8 +248,7 @@ const Settings = () => {
         'Bildirim Ayarları': 'Paramètres de notification',
         'E-posta Bildirimleri': 'Notifications par e-mail',
         'Form yanıtları ve güncellemeler için': 'Pour les réponses de formulaire et les mises à jour',
-        'Push Bildirimleri': 'Notifications push',
-        'Tarayıcı bildirimleri': 'Notifications du navigateur',
+
         'Haftalık Raporlar': 'Rapports hebdomadaires',
         'Form performans özetleri': 'Résumés de performance des formulaires',
         'Gizlilik Ayarları': 'Paramètres de confidentialité',
@@ -362,8 +300,7 @@ const Settings = () => {
         'Bildirim Ayarları': 'Configuración de notificaciones',
         'E-posta Bildirimleri': 'Notificaciones por correo electrónico',
         'Form yanıtları ve güncellemeler için': 'Para respuestas de formularios y actualizaciones',
-        'Push Bildirimleri': 'Notificaciones push',
-        'Tarayıcı bildirimleri': 'Notificaciones del navegador',
+
         'Haftalık Raporlar': 'Informes semanales',
         'Form performans özetleri': 'Resúmenes de rendimiento de formularios',
         'Gizlilik Ayarları': 'Configuración de privacidad',
@@ -494,22 +431,7 @@ const Settings = () => {
     }, 200)
   }
 
-  // Renk şeması değişikliğini anında uygula
-  const handleColorSchemeChange = (newColor: string) => {
-    setAppearance(prev => ({ ...prev, colorScheme: newColor }))
-    
-    // LocalStorage'a kaydet
-    const currentSettings = JSON.parse(localStorage.getItem('userSettings') || '{}')
-    const updatedSettings = { ...currentSettings, colorScheme: newColor }
-    localStorage.setItem('userSettings', JSON.stringify(updatedSettings))
-    
-    // Tüm sisteme renk uygula
-    applyColorToSystem(newColor)
-    
-    // Başarı mesajı göster
-    setMessage({ type: 'success', text: `Renk şeması ${newColor} olarak değiştirildi!` })
-    setTimeout(() => setMessage({ type: '', text: '' }), 2000)
-  }
+
 
   // Sisteme renk uygula
   const applyColorToSystem = (colorName: string) => {
@@ -787,21 +709,13 @@ const Settings = () => {
           const parsed = JSON.parse(localSettings)
           setNotifications({
             email: parsed.emailNotifications ?? true,
-            push: parsed.pushNotifications ?? false,
             weekly: parsed.weeklyReports ?? true
           })
           setPrivacy({
             dataAnalysis: parsed.dataAnalytics ?? true,
             thirdParty: parsed.thirdPartyIntegrations ?? true
           })
-          setAppearance({
-            theme: parsed.theme ?? 'light',
-            colorScheme: parsed.colorScheme ?? 'Mavi'
-          })
-          setLanguage({
-            interface: parsed.language ?? 'tr',
-            dateFormat: parsed.dateFormat ?? 'DD/MM/YYYY'
-          })
+
           setSecurity({
             twoFactor: parsed.twoFactorEnabled ?? false
           })
@@ -816,10 +730,7 @@ const Settings = () => {
             applyColorToSystem(parsed.colorScheme)
           }
 
-          // Mevcut dili uygula
-          if (parsed.language) {
-            applyLanguageToSystem(parsed.language)
-          }
+
         }
 
         // Backend'den de yüklemeye çalış
@@ -833,21 +744,13 @@ const Settings = () => {
           const backendSettings = await response.json()
           setNotifications({
             email: backendSettings.emailNotifications ?? true,
-            push: backendSettings.pushNotifications ?? false,
             weekly: backendSettings.weeklyReports ?? true
           })
           setPrivacy({
             dataAnalysis: backendSettings.dataAnalytics ?? true,
             thirdParty: backendSettings.thirdPartyIntegrations ?? true
           })
-          setAppearance({
-            theme: backendSettings.theme ?? 'light',
-            colorScheme: backendSettings.colorScheme ?? 'Mavi'
-          })
-          setLanguage({
-            interface: backendSettings.language ?? 'tr',
-            dateFormat: backendSettings.dateFormat ?? 'DD/MM/YYYY'
-          })
+
           setSecurity({
             twoFactor: backendSettings.twoFactorEnabled ?? false
           })
@@ -881,17 +784,16 @@ const Settings = () => {
         phoneNumber: null,
         website: null,
         emailNotifications: notifications.email,
-        pushNotifications: notifications.push,
         weeklyReports: notifications.weekly,
         surveyReminders: true,
         dataAnalytics: privacy.dataAnalysis,
         thirdPartyIntegrations: privacy.thirdParty,
         profileVisibility: 'public',
-        theme: appearance.theme,
-        colorScheme: appearance.colorScheme,
+        theme: 'light',
+        colorScheme: 'Mavi',
         fontSize: 'medium',
-        language: language.interface,
-        dateFormat: language.dateFormat,
+        language: 'tr',
+        dateFormat: 'DD/MM/YYYY',
         timeFormat: '24',
         twoFactorEnabled: security.twoFactor,
         loginNotifications: true,
@@ -953,17 +855,16 @@ const Settings = () => {
           phoneNumber: null,
           website: null,
           emailNotifications: notifications.email,
-          pushNotifications: notifications.push,
           weeklyReports: notifications.weekly,
           surveyReminders: true,
           dataAnalytics: privacy.dataAnalysis,
           thirdPartyIntegrations: privacy.thirdParty,
           profileVisibility: 'public',
-          theme: appearance.theme,
-          colorScheme: appearance.colorScheme,
+          theme: 'light',
+          colorScheme: 'Mavi',
           fontSize: 'medium',
-          language: language.interface,
-          dateFormat: language.dateFormat,
+          language: 'tr',
+          dateFormat: 'DD/MM/YYYY',
           timeFormat: '24',
           twoFactorEnabled: security.twoFactor,
           loginNotifications: true,
@@ -1086,8 +987,6 @@ const Settings = () => {
     { id: 'general', label: 'Genel', icon: <User className="w-4 h-4" /> },
     { id: 'notifications', label: 'Bildirimler', icon: <Bell className="w-4 h-4" /> },
     { id: 'privacy', label: 'Gizlilik', icon: <Shield className="w-4 h-4" /> },
-    { id: 'appearance', label: 'Görünüm', icon: <Palette className="w-4 h-4" /> },
-    { id: 'language', label: 'Dil', icon: <Globe className="w-4 h-4" /> },
     { id: 'security', label: 'Güvenlik', icon: <Key className="w-4 h-4" /> },
   ]
 
@@ -1097,39 +996,39 @@ const Settings = () => {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Profil Bilgileri</h3>
+              <h3 className="text-lg font-medium text-white mb-4">{t('Profil Bilgileri')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Ad
+                  <label className="block text-sm font-medium text-blue-100 mb-2">
+                    {t('Ad')}
                   </label>
                   <input
                     type="text"
                     value={formData.userName}
                     onChange={(e) => setFormData({...formData, userName: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-white/30 rounded-lg bg-white/10 text-white placeholder-blue-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent backdrop-blur-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Soyad
+                  <label className="block text-sm font-medium text-blue-100 mb-2">
+                    {t('Soyad')}
                   </label>
                   <input
                     type="text"
                     value={formData.userSurname}
                     onChange={(e) => setFormData({...formData, userSurname: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-white/30 rounded-lg bg-white/10 text-white placeholder-blue-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent backdrop-blur-sm"
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    E-posta
+                  <label className="block text-sm font-medium text-blue-100 mb-2">
+                    {t('E-posta')}
                   </label>
                   <input
                     type="email"
                     value={formData.userEmail}
                     onChange={(e) => setFormData({...formData, userEmail: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-white/30 rounded-lg bg-white/10 text-white placeholder-blue-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent backdrop-blur-sm"
                   />
                 </div>
               </div>
@@ -1140,12 +1039,12 @@ const Settings = () => {
       case 'notifications':
         return (
           <div className="space-y-6">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Bildirim Ayarları</h3>
+            <h3 className="text-lg font-medium text-white mb-4">{t('Bildirim Ayarları')}</h3>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">E-posta Bildirimleri</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Form yanıtları ve güncellemeler için</p>
+                  <p className="font-medium text-white">{t('E-posta Bildirimleri')}</p>
+                  <p className="text-sm text-blue-200">{t('Form yanıtları ve güncellemeler için')}</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input 
@@ -1154,32 +1053,16 @@ const Settings = () => {
                     onChange={(e) => setNotifications({...notifications, email: e.target.checked})}
                     className="sr-only peer" 
                   />
-                  <div className={`w-11 h-6 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer transition-all ${
-                    notifications.email ? 'bg-blue-600 peer-checked:after:translate-x-full' : 'bg-gray-200 dark:bg-gray-700'
-                  } peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600`}></div>
+                  <div className={`w-11 h-6 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-400 rounded-full peer transition-all ${
+                    notifications.email ? 'bg-blue-600 peer-checked:after:translate-x-full' : 'bg-white/20'
+                  } peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white/30 after:border after:rounded-full after:h-5 after:w-5 after:transition-all`}></div>
                 </label>
               </div>
+
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">Push Bildirimleri</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Tarayıcı bildirimleri</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={notifications.push}
-                    onChange={(e) => setNotifications({...notifications, push: e.target.checked})}
-                    className="sr-only peer" 
-                  />
-                  <div className={`w-11 h-6 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer transition-all ${
-                    notifications.push ? 'bg-blue-600 peer-checked:after:translate-x-full' : 'bg-gray-200 dark:bg-gray-700'
-                  } peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600`}></div>
-                </label>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-white">Haftalık Raporlar</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Form performans özetleri</p>
+                  <p className="font-medium text-white">{t('Haftalık Raporlar')}</p>
+                  <p className="text-sm text-blue-200">{t('Form performans özetleri')}</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input 
@@ -1188,9 +1071,9 @@ const Settings = () => {
                     onChange={(e) => setNotifications({...notifications, weekly: e.target.checked})}
                     className="sr-only peer" 
                   />
-                  <div className={`w-11 h-6 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer transition-all ${
-                    notifications.weekly ? 'bg-blue-600 peer-checked:after:translate-x-full' : 'bg-gray-200 dark:bg-gray-700'
-                  } peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600`}></div>
+                  <div className={`w-11 h-6 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-400 rounded-full peer transition-all ${
+                    notifications.weekly ? 'bg-blue-600 peer-checked:after:translate-x-full' : 'bg-white/20'
+                  } peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white/30 after:border after:rounded-full after:h-5 after:w-5 after:transition-all`}></div>
                 </label>
               </div>
             </div>
@@ -1200,12 +1083,12 @@ const Settings = () => {
       case 'privacy':
         return (
           <div className="space-y-6">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Gizlilik Ayarları</h3>
+            <h3 className="text-lg font-medium text-white mb-4">{t('Gizlilik Ayarları')}</h3>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">Veri Analizi</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Anonim kullanım verilerini topla</p>
+                  <p className="font-medium text-white">{t('Veri Analizi')}</p>
+                  <p className="text-sm text-blue-200">{t('Anonim kullanım verilerini topla')}</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input 
@@ -1214,15 +1097,15 @@ const Settings = () => {
                     onChange={(e) => setPrivacy({...privacy, dataAnalysis: e.target.checked})}
                     className="sr-only peer" 
                   />
-                  <div className={`w-11 h-6 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer transition-all ${
-                    privacy.dataAnalysis ? 'bg-blue-600 peer-checked:after:translate-x-full' : 'bg-gray-200 dark:bg-gray-700'
-                  } peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600`}></div>
+                  <div className={`w-11 h-6 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-400 rounded-full peer transition-all ${
+                    privacy.dataAnalysis ? 'bg-blue-600 peer-checked:after:translate-x-full' : 'bg-white/20'
+                  } peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white/30 after:border after:rounded-full after:h-5 after:w-5 after:transition-all`}></div>
                 </label>
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">Üçüncü Taraf Entegrasyonları</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Jira, Trello gibi servisler</p>
+                  <p className="font-medium text-white">{t('Üçüncü Taraf Entegrasyonları')}</p>
+                  <p className="text-sm text-blue-200">{t('Jira, Trello gibi servisler')}</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input 
@@ -1231,116 +1114,10 @@ const Settings = () => {
                     onChange={(e) => setPrivacy({...privacy, thirdParty: e.target.checked})}
                     className="sr-only peer" 
                   />
-                  <div className={`w-11 h-6 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer transition-all ${
-                    privacy.thirdParty ? 'bg-blue-600 peer-checked:after:translate-x-full' : 'bg-gray-200 dark:bg-gray-700'
-                  } peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600`}></div>
+                  <div className={`w-11 h-6 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-400 rounded-full peer transition-all ${
+                    privacy.thirdParty ? 'bg-blue-600 peer-checked:after:translate-x-full' : 'bg-white/20'
+                  } peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white/30 after:border after:rounded-full after:h-5 after:w-5 after:transition-all`}></div>
                 </label>
-              </div>
-            </div>
-          </div>
-        )
-
-      case 'appearance':
-        return (
-          <div className="space-y-6">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Görünüm Ayarları</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Tema
-                </label>
-                                 <select 
-                   value={appearance.theme}
-                                       onChange={(e) => {
-                      const newTheme = e.target.value
-                      setAppearance({...appearance, theme: newTheme})
-                      
-                      // LocalStorage'a kaydet
-                      const currentSettings = JSON.parse(localStorage.getItem('userSettings') || '{}')
-                      const updatedSettings = { ...currentSettings, theme: newTheme }
-                      localStorage.setItem('userSettings', JSON.stringify(updatedSettings))
-                      
-                      // Tüm sisteme tema uygula
-                      applyThemeToSystem(newTheme)
-                      
-                      // Başarı mesajı göster
-                      const themeNames: { [key: string]: string } = { 'light': 'Açık', 'dark': 'Koyu', 'auto': 'Otomatik' }
-                      setMessage({ type: 'success', text: `Tema ${themeNames[newTheme] || newTheme} olarak değiştirildi!` })
-                      setTimeout(() => setMessage({ type: '', text: '' }), 2000)
-                    }}
-                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                 >
-                   <option value="light">Açık</option>
-                   <option value="dark">Koyu</option>
-                   <option value="auto">Otomatik</option>
-                 </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Renk Şeması
-                </label>
-                <div className="grid grid-cols-3 gap-3">
-                                     {['Mavi', 'Mor', 'Yeşil', 'Kırmızı', 'Turuncu', 'Pembe'].map((color) => (
-                     <button
-                       key={color}
-                       onClick={() => handleColorSchemeChange(color)}
-                       className={`px-3 py-2 border rounded-lg transition-colors duration-200 ${
-                         appearance.colorScheme === color
-                           ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                           : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-                       }`}
-                     >
-                       {color}
-                     </button>
-                   ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-
-      case 'language':
-        return (
-          <div className="space-y-6">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Dil Ayarları</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Arayüz Dili
-                </label>
-                                 <select 
-                   value={language.interface}
-                   onChange={(e) => handleLanguageChange(e.target.value)}
-                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                 >
-                   <option value="tr">Türkçe</option>
-                   <option value="en">English</option>
-                   <option value="de">Deutsch</option>
-                   <option value="fr">Français</option>
-                   <option value="es">Español</option>
-                 </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Tarih Formatı
-                </label>
-                                 <select 
-                   value={language.dateFormat}
-                   onChange={(e) => {
-                     const newDateFormat = e.target.value
-                     setLanguage({...language, dateFormat: newDateFormat})
-                     
-                     // LocalStorage'a kaydet
-                     const currentSettings = JSON.parse(localStorage.getItem('userSettings') || '{}')
-                     const updatedSettings = { ...currentSettings, dateFormat: newDateFormat }
-                     localStorage.setItem('userSettings', JSON.stringify(updatedSettings))
-                   }}
-                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                 >
-                   <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                   <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                   <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                 </select>
               </div>
             </div>
           </div>
@@ -1349,52 +1126,52 @@ const Settings = () => {
       case 'security':
         return (
           <div className="space-y-6">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Güvenlik Ayarları</h3>
+            <h3 className="text-lg font-medium text-white mb-4">{t('Güvenlik Ayarları')}</h3>
             <div className="space-y-4">
               <div>
-                <h4 className="font-medium text-gray-900 dark:text-white mb-2">Şifre Değiştir</h4>
+                <h4 className="font-medium text-white mb-2">{t('Şifre Değiştir')}</h4>
                 <div className="space-y-3">
                   <input
                     type="password"
                     value={formData.currentPassword}
                     onChange={(e) => setFormData({...formData, currentPassword: e.target.value})}
-                    placeholder="Mevcut şifre"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder={t('Mevcut şifre')}
+                    className="w-full px-3 py-2 border border-white/30 rounded-lg bg-white/10 text-white placeholder-blue-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent backdrop-blur-sm"
                   />
                   <input
                     type="password"
                     value={formData.newPassword}
                     onChange={(e) => setFormData({...formData, newPassword: e.target.value})}
-                    placeholder="Yeni şifre"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder={t('Yeni şifre')}
+                    className="w-full px-3 py-2 border border-white/30 rounded-lg bg-white/10 text-white placeholder-blue-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent backdrop-blur-sm"
                   />
                   <input
                     type="password"
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                    placeholder="Yeni şifre (tekrar)"
-                    className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    placeholder={t('Yeni şifre (tekrar)')}
+                    className={`w-full px-3 py-2 border rounded-lg bg-white/10 text-white placeholder-blue-200 focus:ring-2 focus:ring-blue-400 focus:border-transparent backdrop-blur-sm ${
                       formData.confirmPassword && formData.newPassword !== formData.confirmPassword
-                        ? 'border-red-500 focus:ring-red-500'
-                        : 'border-gray-300 dark:border-gray-600'
+                        ? 'border-red-400 focus:ring-red-400'
+                        : 'border-white/30'
                     }`}
                   />
                   {formData.confirmPassword && formData.newPassword !== formData.confirmPassword && (
-                    <p className="text-sm text-red-600 dark:text-red-400">Şifreler eşleşmiyor!</p>
+                    <p className="text-sm text-red-300">{t('Şifreler eşleşmiyor!')}</p>
                   )}
                   <button 
                     onClick={handlePasswordUpdate}
                     disabled={!formData.currentPassword || !formData.newPassword || !formData.confirmPassword || formData.newPassword !== formData.confirmPassword}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                   >
-                    Şifreyi Güncelle
+                    {t('Şifreyi Güncelle')}
                   </button>
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">İki Faktörlü Doğrulama</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Ek güvenlik için SMS veya uygulama kodu</p>
+                  <p className="font-medium text-white">{t('İki Faktörlü Doğrulama')}</p>
+                  <p className="text-sm text-blue-200">{t('Ek güvenlik için SMS veya uygulama kodu')}</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input 
@@ -1403,9 +1180,9 @@ const Settings = () => {
                     onChange={(e) => setSecurity({...security, twoFactor: e.target.checked})}
                     className="sr-only peer" 
                   />
-                  <div className={`w-11 h-6 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer transition-all ${
-                    security.twoFactor ? 'bg-blue-600 peer-checked:after:translate-x-full' : 'bg-gray-200 dark:bg-gray-700'
-                  } peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600`}></div>
+                  <div className={`w-11 h-6 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-400 rounded-full peer transition-all ${
+                    security.twoFactor ? 'bg-blue-600 peer-checked:after:translate-x-full' : 'bg-white/20'
+                  } peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white/30 after:border after:rounded-full after:h-5 after:w-5 after:transition-all`}></div>
                 </label>
               </div>
             </div>
@@ -1418,20 +1195,20 @@ const Settings = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg shadow-2xl border border-white/20">
           {/* Header */}
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="px-6 py-4 border-b border-white/20 bg-gradient-to-r from-blue-800/50 to-indigo-800/50">
             <div className="flex items-center space-x-3">
-              <SettingsIcon className="w-6 h-6 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Ayarlar</h1>
+              <SettingsIcon className="w-6 h-6 text-blue-300" />
+              <h1 className="text-2xl font-bold text-white">{t('Ayarlar')}</h1>
             </div>
           </div>
 
           <div className="flex">
             {/* Sidebar */}
-            <div className="w-64 border-r border-gray-200 dark:border-gray-700">
+            <div className="w-64 border-r border-white/20 bg-blue-900/30">
               <nav className="p-4">
                 <ul className="space-y-2">
                   {tabs.map((tab) => (
@@ -1440,12 +1217,12 @@ const Settings = () => {
                         onClick={() => setActiveTab(tab.id)}
                         className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors duration-200 ${
                           activeTab === tab.id
-                            ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                            ? 'bg-blue-600/50 text-white border border-blue-400/50 shadow-lg'
+                            : 'text-blue-100 hover:bg-blue-800/50 hover:text-white'
                         }`}
                       >
                         {tab.icon}
-                        <span>{tab.label}</span>
+                        <span>{t(tab.label)}</span>
                       </button>
                     </li>
                   ))}
@@ -1454,13 +1231,13 @@ const Settings = () => {
             </div>
 
             {/* Content */}
-            <div className="flex-1 p-6">
+            <div className="flex-1 p-6 bg-transparent">
               {/* Message Display */}
               {message.text && (
                 <div className={`mb-6 p-4 rounded-lg ${
                   message.type === 'success' 
-                    ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800'
-                    : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800'
+                    ? 'bg-green-500/20 text-green-100 border border-green-400/50'
+                    : 'bg-red-500/20 text-red-100 border border-red-400/50'
                 }`}>
                   {message.text}
                 </div>
@@ -1469,22 +1246,22 @@ const Settings = () => {
               {renderTabContent()}
               
               {/* Save Button */}
-              <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+              <div className="mt-8 pt-6 border-t border-white/20">
                 <div className="flex justify-between items-center">
                   <button
                     onClick={() => setShowDeleteConfirm(true)}
-                    className="px-4 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-200"
+                    className="px-4 py-2 text-red-300 border border-red-400/50 rounded-lg hover:bg-red-500/20 transition-colors duration-200"
                   >
                     <Trash2 className="w-4 h-4 inline mr-2" />
-                    Hesabı Sil
+                    {t('Hesabı Sil')}
                   </button>
                   <button 
                     onClick={handleSaveSettings}
                     disabled={isLoading}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                   >
                     <Save className="w-4 h-4 inline mr-2" />
-                    {isLoading ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
+                    {isLoading ? t('Kaydediliyor...') : t('Değişiklikleri Kaydet')}
                   </button>
                 </div>
               </div>
@@ -1495,30 +1272,30 @@ const Settings = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-blue-900/90 backdrop-blur-sm rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl border border-white/20">
             <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
-                <Trash2 className="w-5 h-5 text-red-600" />
+              <div className="w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-red-400" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Hesabı Sil</h3>
+              <h3 className="text-lg font-medium text-white">{t('Hesabı Sil')}</h3>
             </div>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Bu işlem geri alınamaz. Tüm verileriniz kalıcı olarak silinecektir.
+            <p className="text-blue-100 mb-6">
+              {t('Bu işlem geri alınamaz. Tüm verileriniz kalıcı olarak silinecektir.')}
             </p>
             <div className="flex space-x-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
+                className="flex-1 px-4 py-2 border border-white/30 rounded-lg text-blue-100 hover:bg-white/10 transition-colors duration-200"
               >
-                İptal
+                {t('İptal')}
               </button>
-                              <button 
-                  onClick={handleDeleteAccount}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200"
-                >
-                  Hesabı Sil
-                </button>
+              <button 
+                onClick={handleDeleteAccount}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200"
+              >
+                {t('Hesabı Sil')}
+              </button>
             </div>
           </div>
         </div>

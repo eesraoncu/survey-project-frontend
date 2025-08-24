@@ -1,27 +1,15 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { FileText, Plus, BarChart3, Settings, LogIn, LogOut, User, Search } from 'lucide-react'
+import { FileText, Plus, BarChart3, Settings, LogIn, LogOut, User, Globe, Menu, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { useState, useRef, useEffect } from 'react'
+import { useLanguage } from '../contexts/LanguageContext'
+import { useEffect, useState } from 'react'
 
 const Navbar = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, isAuthenticated, logout } = useAuth()
-  const [showProfileMenu, setShowProfileMenu] = useState(false)
-
-  const profileMenuRef = useRef<HTMLDivElement>(null)
-
-  // Click outside to close menus
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
-        setShowProfileMenu(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  const { language, setLanguage } = useLanguage()
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   // Sistem değişikliklerini dinle
   useEffect(() => {
@@ -58,7 +46,7 @@ const Navbar = () => {
         'Ana Sayfa': 'Ana Sayfa',
         'Anketlerim': 'Anketlerim',
         'Yeni Anket': 'Yeni Anket',
-        'AI destekli arama...': 'AI destekli arama...',
+
         'Çıkış Yap': 'Çıkış Yap',
         'Kayıt Ol': 'Kayıt Ol',
         'Giriş Yap': 'Giriş Yap',
@@ -86,7 +74,7 @@ const Navbar = () => {
         'Ana Sayfa': 'Home',
         'Anketlerim': 'My Forms',
         'Yeni Anket': 'New Form',
-        'AI destekli arama...': 'AI-powered search...',
+
         'Çıkış Yap': 'Logout',
         'Kayıt Ol': 'Register',
         'Giriş Yap': 'Login',
@@ -241,15 +229,7 @@ const Navbar = () => {
       })
     })
     
-    // Özel placeholder güncellemeleri
-    const searchInput = document.querySelector('input[placeholder*="arama"]') as HTMLInputElement
-    if (searchInput) {
-      if (language === 'en') {
-        searchInput.placeholder = 'AI-powered search...'
-      } else {
-        searchInput.placeholder = 'AI destekli arama...'
-      }
-    }
+
     
     // Tüm sayfayı yeniden render etmeyi tetikle
     setTimeout(() => {
@@ -342,39 +322,159 @@ const Navbar = () => {
   }
 
   const navItems = [
-    { path: '/home', label: 'Ana Sayfa', icon: <FileText className="w-5 h-5" /> },
-    { path: '/forms', label: 'Anketlerim', icon: <BarChart3 className="w-5 h-5" /> },
-    { path: '/forms/new', label: 'Yeni Anket', icon: <Plus className="w-5 h-5" /> }
+    { path: '/home', label: language === 'en' ? 'Home' : 'Ana Sayfa', icon: <FileText className="w-4 h-4" /> },
+    { path: '/forms', label: language === 'en' ? 'My Forms' : 'Anketlerim', icon: <BarChart3 className="w-4 h-4" /> },
+    { path: '/form-builder', label: language === 'en' ? 'New Form' : 'Yeni Anket', icon: <Plus className="w-4 h-4" /> }
   ]
 
-
-
-
-
-
-
   return (
-    <nav className="bg-[#1A2B6B] shadow-sm border-b border-blue-800">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-900/90 backdrop-blur-xl border-b border-slate-700/60 shadow-lg shadow-slate-900/30 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-20">
           {/* Sol Taraf - Logo ve Navigasyon */}
-          <div className="flex items-center space-x-6">
-            <Link to="/home" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
-                <FileText className="w-5 h-5 text-white" />
+          <div className="flex items-center space-x-8">
+            {/* Logo */}
+            <Link to="/home" className="flex items-center space-x-3 group">
+              <div className="relative">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                  <FileText className="w-5 h-5 text-white" />
+                </div>
+                <div className="absolute -inset-1 bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 rounded-2xl blur opacity-20 group-hover:opacity-40 transition-opacity duration-300"></div>
               </div>
-              <span className="text-xl font-semibold text-white">Formlar</span>
+              <div className="flex flex-col">
+                <span className="text-xl font-bold bg-gradient-to-r from-white via-blue-300 to-indigo-400 bg-clip-text text-transparent">
+                  {language === 'en' ? 'FormFlow' : 'Formlar'}
+                </span>
+                <span className="text-xs text-slate-300 font-medium">
+                  {language === 'en' ? 'Survey Platform' : 'Anket Platformu'}
+                </span>
+              </div>
             </Link>
             
-            <div className="hidden md:flex items-center space-x-1">
+            {/* Ana navigasyon linkleri - Desktop */}
+            <div className="hidden lg:flex items-center space-x-1">
               {navItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`group relative flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
                     location.pathname === item.path
-                      ? 'bg-white/20 text-white'
-                      : 'text-blue-100 hover:text-white hover:bg-white/10'
+                      ? 'text-blue-300 bg-blue-900/20 shadow-sm'
+                      : 'text-slate-300 hover:text-blue-300 hover:bg-slate-800/50'
+                  }`}
+                >
+                  <span className="group-hover:scale-110 transition-transform duration-200">
+                    {item.icon}
+                  </span>
+                  <span>{item.label}</span>
+                  {location.pathname === item.path && (
+                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-blue-300 rounded-full shadow-sm"></div>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Sağ Taraf - Kullanıcı Menüsü ve Araçlar */}
+          <div className="flex items-center space-x-3">
+            {/* Dil Değiştirme Butonu */}
+            <button
+              onClick={() => setLanguage(language === 'tr' ? 'en' : 'tr')}
+              title={language === 'tr' ? 'Switch to English' : 'Türkçeye geç'}
+              className="relative p-2.5 hover:bg-slate-800/50 rounded-xl text-slate-300 hover:text-blue-300 transition-all duration-200 group"
+            >
+              <Globe className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-blue-700 to-indigo-800 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-sm">
+                {language === 'tr' ? 'EN' : 'TR'}
+              </span>
+            </button>
+
+            {/* Ayarlar Butonu */}
+            <button 
+              onClick={() => navigate('/settings')}
+              className="p-2.5 hover:bg-slate-800/50 rounded-xl text-slate-300 hover:text-blue-300 transition-all duration-200 group"
+            >
+              <Settings className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
+            </button>
+
+            {isAuthenticated ? (
+              <>
+                {/* Kullanıcı Bilgisi */}
+                <div className="hidden sm:flex items-center space-x-3 px-4 py-2.5 bg-slate-800/50 rounded-xl border border-slate-700/50 hover:bg-slate-700/50 transition-colors duration-200">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-sm">
+                    <span className="text-white font-semibold text-sm">{user?.userName?.charAt(0) || 'U'}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-white">
+                      {user?.userName} {user?.userSurname}
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      {language === 'en' ? 'Online' : 'Çevrimiçi'}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Çıkış Butonu */}
+                <button
+                  onClick={() => {
+                    logout()
+                    navigate('/login')
+                  }}
+                  className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md hover:scale-105 group"
+                >
+                  <LogOut className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
+                  <span className="hidden sm:inline">{language === 'en' ? 'Logout' : 'Çıkış Yap'}</span>
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center space-x-3">
+                {/* Kayıt Ol Butonu */}
+                <Link
+                  to="/register"
+                  className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md hover:scale-105 group"
+                >
+                  <User className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
+                  <span className="hidden sm:inline">{language === 'en' ? 'Register' : 'Kayıt Ol'}</span>
+                </Link>
+                
+                {/* Giriş Yap Butonu */}
+                <Link
+                  to="/login"
+                  className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md hover:scale-105 group"
+                >
+                  <LogIn className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
+                  <span className="hidden sm:inline">{language === 'en' ? 'Login' : 'Giriş Yap'}</span>
+                </Link>
+              </div>
+            )}
+
+            {/* Mobil Menü Butonu */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="lg:hidden p-2.5 hover:bg-slate-800/50 rounded-xl text-slate-300 hover:text-blue-300 transition-all duration-200"
+            >
+              {isMobileMenuOpen ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Menu className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobil Menü */}
+        {isMobileMenuOpen && (
+          <div className="lg:hidden py-4 border-t border-slate-700/50 bg-slate-900/95 backdrop-blur-sm">
+            <div className="flex flex-col space-y-2">
+              {navItems.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    location.pathname === item.path
+                      ? 'text-blue-300 bg-blue-900/20 shadow-sm'
+                      : 'text-slate-300 hover:text-blue-300 hover:bg-slate-800/50'
                   }`}
                 >
                   {item.icon}
@@ -383,141 +483,8 @@ const Navbar = () => {
               ))}
             </div>
           </div>
-
-          {/* Orta - Arama Çubuğu */}
-          <div className="flex-1 max-w-2xl mx-8">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Arama yapın..."
-                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-400 focus:border-transparent text-gray-900 placeholder-gray-500 transition-colors duration-300"
-              />
-            </div>
-          </div>
-          
-          {/* Sağ Taraf - Kullanıcı Menüsü ve Araçlar */}
-          <div className="flex items-center space-x-4">
-            {isAuthenticated ? (
-              <>
-                <div className="flex items-center space-x-2 text-sm text-white">
-                  <User className="w-4 h-4" />
-                  <span>{user?.userName} {user?.userSurname}</span>
-                </div>
-                
-                <button
-                  onClick={() => {
-                    logout()
-                    navigate('/login')
-                  }}
-                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg text-sm font-medium hover:from-red-700 hover:to-red-800 transition-all duration-200"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>Çıkış Yap</span>
-                </button>
-              </>
-            ) : (
-              <div className="flex items-center space-x-2">
-                <Link
-                  to="/register"
-                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg text-sm font-medium hover:from-green-700 hover:to-green-800 transition-all duration-200"
-                >
-                  <User className="w-4 h-4" />
-                  <span>Kayıt Ol</span>
-                </Link>
-                <Link
-                  to="/login"
-                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-sm font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-200"
-                >
-                  <LogIn className="w-4 h-4" />
-                  <span>Giriş Yap</span>
-                </Link>
-              </div>
-            )}
-            
-
-            
-
-            
-            {/* Ayarlar Butonu */}
-            <button 
-              onClick={() => navigate('/settings')}
-              className="p-2 hover:bg-white/10 rounded-lg text-white hover:text-white transition-colors duration-200"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
-            
-            {/* Profil Simgesi */}
-            <div className="relative" ref={profileMenuRef}>
-              <button 
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors duration-200 cursor-pointer"
-              >
-                <span className="text-white font-medium">{user?.userName?.charAt(0) || 'E'}</span>
-              </button>
-              
-              {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
-                  <div className="p-4">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
-                        <span className="text-white font-medium text-lg">{user?.userName?.charAt(0) || 'E'}</span>
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{user?.userName} {user?.userSurname}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">{user?.userEmail}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <button 
-                        onClick={() => {
-                          // Profil görüntüleme modal'ı açılabilir
-                          setShowProfileMenu(false)
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200"
-                      >
-                        Profilimi Görüntüle
-                      </button>
-                      <button 
-                        onClick={() => {
-                          navigate('/settings')
-                          setShowProfileMenu(false)
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200"
-                      >
-                        Profil Düzenle
-                      </button>
-                      <button 
-                        onClick={() => {
-                          navigate('/settings')
-                          setShowProfileMenu(false)
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200"
-                      >
-                        Hesap Ayarları
-                      </button>
-                      <button 
-                        onClick={() => {
-                          // Yardım sayfasına yönlendirme veya modal açma
-                          setShowProfileMenu(false)
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200"
-                      >
-                        Yardım & Destek
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        )}
       </div>
-
-
-
-
     </nav>
   )
 }

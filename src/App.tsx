@@ -5,7 +5,6 @@ import Layout from './components/Layout'
 import Home from './pages/Home'
 import Forms from './pages/Forms'
 import FormBuilder from './pages/FormBuilder'
-
 import FormResponse from './pages/FormResponse'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -16,6 +15,7 @@ import NotFound from './pages/NotFound'
 import Settings from './pages/Settings'
 import ProtectedRoute from './components/ProtectedRoute'
 import TestUpload from './pages/TestUpload'
+import { LanguageProvider } from './contexts/LanguageContext'
 
 function App() {
   // Global renk ve dil değişiklik fonksiyonları
@@ -726,80 +726,82 @@ function App() {
   }, [])
 
   return (
-    <Routes>
-      {/* Public routes - giriş yapmadan erişilebilir */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/auth/trello/callback" element={<TrelloCallback />} />
-      <Route path="/auth/jira/callback" element={<JiraCallback />} />
-      <Route path="/test-upload" element={<TestUpload />} />
+    <LanguageProvider>
+      <Routes>
+        {/* Public routes - giriş yapmadan erişilebilir */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/auth/trello/callback" element={<TrelloCallback />} />
+        <Route path="/auth/jira/callback" element={<JiraCallback />} />
+        <Route path="/test-upload" element={<TestUpload />} />
 
-      {/* Tüm uygulama layout'u */}
-      <Route element={<Layout />}>
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route
-          path="/home"
-          element={
-            <ProtectedRoute>
-              <Home />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/forms"
-          element={
-            <ProtectedRoute>
-              <Forms />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/form-builder"
-          element={
-            <ProtectedRoute>
-              <FormBuilder />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/form-builder/:id"
-          element={
-            <ProtectedRoute>
-              <FormBuilder />
-            </ProtectedRoute>
-          }
-        />
+        {/* Tüm uygulama layout'u */}
+        <Route element={<Layout />}>
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route
+            path="/home"
+            element={
+              <ProtectedRoute>
+                <Home />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/forms"
+            element={
+              <ProtectedRoute>
+                <Forms />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/form-builder"
+            element={
+              <ProtectedRoute>
+                <FormBuilder />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/form-builder/:id"
+            element={
+              <ProtectedRoute>
+                <FormBuilder />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/forms/new"
-          element={
-            <ProtectedRoute>
-              <FormBuilder />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/forms/:id"
-          element={
-            <ProtectedRoute>
-              <FormResponse />
-            </ProtectedRoute>
-          }
-        />
-        {/* Public answering route */}
-        <Route path="/survey/:id" element={<FormResponse />} />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="*" element={<NotFound />} />
-      </Route>
-    </Routes>
+          <Route
+            path="/forms/new"
+            element={
+              <ProtectedRoute>
+                <FormBuilder />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/forms/:id"
+            element={
+              <ProtectedRoute>
+                <FormResponse />
+              </ProtectedRoute>
+            }
+          />
+          {/* Public answering route */}
+          <Route path="/survey/:id" element={<FormResponse />} />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<NotFound />} />
+        </Route>
+      </Routes>
+    </LanguageProvider>
   )
 }
 

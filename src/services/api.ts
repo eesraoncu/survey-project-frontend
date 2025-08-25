@@ -1,9 +1,11 @@
 import axios from 'axios'
 
-const baseURL = import.meta.env.VITE_API_BASE_URL as string | undefined
+const envBase = import.meta.env.VITE_API_BASE_URL as string | undefined
+// Geliştirme ortamında Vite proxy'sini kullanmak için varsayılanı '/api' yap
+const baseURL = envBase ?? '/api'
 
 export const apiClient = axios.create({
-  baseURL: baseURL ?? 'http://localhost:5000/api',
+  baseURL,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -28,9 +30,50 @@ apiClient.interceptors.request.use(
 );
 
 apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => Promise.reject(error)
+  (response) => {
+    console.log('🔐 [API CLIENT] Response alındı:', {
+      status: response.status,
+      url: response.config.url,
+      method: response.config.method?.toUpperCase()
+    });
+    return response;
+  },
+  (error) => {
+    console.error('🔐 [API CLIENT] Response error:', {
+      status: error.response?.status,
+      message: error.response?.data?.message || error.message,
+      url: error.config?.url,
+      method: error.config?.method?.toUpperCase()
+    });
+    
+    // 401 hatası durumunda sayfa yenilemeyi engelle, sadece log'la
+    if (error.response?.status === 401) {
+      console.log('🔐 [API CLIENT] 401 Unauthorized hatası - sayfa yenilenmeyecek');
+      // localStorage temizleme ve sayfa yenileme işlemini kaldırdık
+    }
+    
+    return Promise.reject(error);
+  }
 )
+
+// Tüm isteklerde bearer token ekle
+apiClient.interceptors.request.use((config) => {
+  console.log('🔐 [API CLIENT] Request gönderiliyor:', {
+    method: config.method?.toUpperCase(),
+    url: config.url,
+    baseURL: config.baseURL
+  });
+  
+  const token = localStorage.getItem('authToken')
+  if (token) {
+    config.headers = config.headers ?? {}
+    ;(config.headers as any).Authorization = `Bearer ${token}`
+    console.log('🔐 [API CLIENT] Token eklendi, uzunluk:', token.length);
+  } else {
+    console.log('🔐 [API CLIENT] Token bulunamadı');
+  }
+  return config
+})
 
 export default apiClient
 

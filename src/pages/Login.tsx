@@ -111,22 +111,33 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password.trim()) return;
+    console.log('🔐 [LOGIN PAGE] Form submit edildi');
     
+    if (!email.trim() || !password.trim()) {
+      console.log('🔐 [LOGIN PAGE] Email veya şifre boş');
+      return;
+    }
+    
+    console.log('🔐 [LOGIN PAGE] Login başlatılıyor:', { email: email.trim() });
     setIsLoading(true);
     
     try {
+      console.log('🔐 [LOGIN PAGE] Login fonksiyonu çağrılıyor...');
       const success = await login(email.trim(), password);
+      console.log('🔐 [LOGIN PAGE] Login sonucu:', { success });
       
       if (success) {
+        console.log('🔐 [LOGIN PAGE] Login başarılı, yönlendirme yapılıyor:', from);
         navigate(from, { replace: true });
       } else {
+        console.log('🔐 [LOGIN PAGE] Login başarısız, hata mesajı gösteriliyor');
         alert('Giriş başarısız! E-posta veya şifre hatalı.');
       }
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.error('🔐 [LOGIN PAGE] Login error:', error);
       alert(error.message || 'Giriş yapılırken bir hata oluştu');
     } finally {
+      console.log('🔐 [LOGIN PAGE] Login işlemi tamamlandı, loading false');
       setIsLoading(false);
     }
   };
@@ -426,6 +437,7 @@ const Login: React.FC = () => {
             >
               {t('signup')}
             </button>
+            {/* Admin sekmesi kaldırıldı; tek giriş akışı kullanılacak */}
           </div>
 
           {/* Login Form */}
@@ -902,6 +914,8 @@ const Login: React.FC = () => {
               </motion.button>
             </motion.form>
           )}
+
+          {/* Admin Login Form kaldırıldı; tek giriş akışı */}
 
           {/* Bottom Links */}
           <div className="mt-8 text-center space-y-3">

@@ -13,6 +13,7 @@ import TrelloCallback from './pages/TrelloCallback'
 import JiraCallback from './pages/JiraCallback'
 import NotFound from './pages/NotFound'
 import Settings from './pages/Settings'
+import AdminLogs from './pages/AdminLogs'
 import ProtectedRoute from './components/ProtectedRoute'
 import TestUpload from './pages/TestUpload'
 import { LanguageProvider } from './contexts/LanguageContext'
@@ -795,6 +796,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Settings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/logs"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminLogs />
               </ProtectedRoute>
             }
           />

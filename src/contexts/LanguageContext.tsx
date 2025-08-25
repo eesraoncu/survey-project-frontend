@@ -98,6 +98,15 @@ const translations: { [key: string]: { [key: string]: string } } = {
     'Değişiklikleri Kaydet': 'Değişiklikleri Kaydet',
     'Hesabı Sil': 'Hesabı Sil',
     'Kaydediliyor...': 'Kaydediliyor...',
+    
+    // Admin
+    'Admin': 'Admin',
+    'Admin E-posta': 'Admin E-posta',
+    'Admin Şifre': 'Admin Şifre',
+    'Admin Girişi': 'Admin Girişi',
+    'Admin Girişi Yapılıyor...': 'Admin Girişi Yapılıyor...',
+            'Admin girişi başarısız! E-posta veya şifre hatalı.': 'Admin girişi başarısız! E-posta veya şifre hatalı.',
+        'Loglar': 'Loglar',
     'Bu işlem geri alınamaz. Tüm verileriniz kalıcı olarak silinecektir.': 'Bu işlem geri alınamaz. Tüm verileriniz kalıcı olarak silinecektir.',
     
     // Form Builder
@@ -302,6 +311,17 @@ const translations: { [key: string]: { [key: string]: string } } = {
     'Anket yönetimi ve takibi': 'Anket yönetimi ve takibi',
     'Anket ara...': 'Anket ara...',
     'Yenile': 'Yenile',
+    'Survey': 'Anket',
+    'Status': 'Durum',
+    'Category': 'Kategori',
+    'Responses': 'Yanıtlar',
+    'Last Update': 'Son Güncelleme',
+    'Actions': 'İşlemler',
+    // Durum metinlerinin İngilizce anahtar eşlemesi
+    'Active': 'Aktif',
+    'Draft': 'Taslak',
+    'Archived': 'Arşivlenmiş',
+    'Unknown': 'Bilinmiyor',
     'Aktif': 'Aktif',
     'Taslak': 'Taslak',
     'Arşivlenmiş': 'Arşivlenmiş',
@@ -328,7 +348,6 @@ const translations: { [key: string]: { [key: string]: string } } = {
     'Last 7 days': 'Son 7 gün',
     'Last 30 days': 'Son 30 gün',
     'responses': 'yanıt',
-    'Active': 'Aktif',
     
     // Trends bölümü
     'Trend Anketler': 'Trend Anketler',
@@ -422,6 +441,15 @@ const translations: { [key: string]: { [key: string]: string } } = {
     'Hesabı Sil': 'Delete Account',
     'Kaydediliyor...': 'Saving...',
     'Bu işlem geri alınamaz. Tüm verileriniz kalıcı olarak silinecektir.': 'This action cannot be undone. All your data will be permanently deleted.',
+    
+    // Admin
+    'Admin': 'Admin',
+    'Admin E-posta': 'Admin Email',
+    'Admin Şifre': 'Admin Password',
+    'Admin Girişi': 'Admin Login',
+    'Admin Girişi Yapılıyor...': 'Admin Login in Progress...',
+            'Admin girişi başarısız! E-posta veya şifre hatalı.': 'Admin login failed! Email or password incorrect.',
+        'Loglar': 'Logs',
     
     // Son Formlar bölümü
     'Latest Forms': 'Latest Forms',
@@ -622,6 +650,12 @@ const translations: { [key: string]: { [key: string]: string } } = {
     'Anket yönetimi ve takibi': 'Survey management and tracking',
     'Anket ara...': 'Search surveys...',
     'Yenile': 'Refresh',
+    'Survey': 'Survey',
+    'Status': 'Status',
+    'Category': 'Category',
+    'Responses': 'Responses',
+    'Last Update': 'Last Update',
+    'Actions': 'Actions',
     'Aktif': 'Active',
     'Taslak': 'Draft',
     'Arşivlenmiş': 'Archived',

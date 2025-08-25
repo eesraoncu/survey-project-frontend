@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { apiClient } from './api';
 
 // SHA-256 + Base64 hash fonksiyonu (Backend ile uyumlu)
 async function hashPassword(password: string): Promise<string> {
@@ -10,51 +10,15 @@ async function hashPassword(password: string): Promise<string> {
   return btoa(String.fromCharCode(...hashArray));
 }
 
-// API Base URL - Proxy kullanarak
-const API_BASE_URL = '/api'; // Vite proxy kullanıyor
-
-// Axios instance oluştur
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  withCredentials: false, // CORS için önemli
-  timeout: 120000, // 2 dakika timeout (60 saniye yerine)
-});
-
-// Request interceptor - her istekte token ekle
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Response interceptor - token yenileme ve hata yönetimi
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token geçersiz, kullanıcıyı logout yap
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
-
 // API Response tipleri
 export interface LoginRequest {
   userEmail: string;
   userPassword: string;
+}
+
+export interface AdminLoginRequest {
+  adminEmail: string;
+  adminPassword: string;
 }
 
 export interface User {
@@ -73,7 +37,8 @@ export interface User {
 export interface LoginResponse {
   success: boolean;
   message: string;
-  user: User;
+  user?: User;
+  admin?: User;
   token: string;
   error: string;
 }
@@ -104,14 +69,18 @@ export interface GoogleLoginResponse {
 
 // Auth Service fonksiyonları
 export const authService = {
-  // Login fonksiyonu
+  // Normal kullanıcı login fonksiyonu
   async login(credentials: LoginRequest): Promise<LoginResponse> {
+    console.log('🔐 [AUTH SERVICE] Normal login başlatılıyor:', { email: credentials.userEmail });
+    
     try {
       // Şifreyi hash'le (güvenlik için)
       const hashedPassword = await hashPassword(credentials.userPassword);
+      console.log('🔐 [AUTH SERVICE] Şifre hash\'lendi, uzunluk:', hashedPassword.length);
       
       // Form data formatında gönder
       const formData = `userEmail=${encodeURIComponent(credentials.userEmail)}&userPassword=${encodeURIComponent(hashedPassword)}`;
+      console.log('🔐 [AUTH SERVICE] FormData hazırlandı, gönderiliyor...');
       
       const response = await apiClient.post<LoginResponse>('/Auth/login', formData, {
         headers: { 
@@ -119,10 +88,18 @@ export const authService = {
         }
       });
       
+      console.log('🔐 [AUTH SERVICE] Login response alındı:', {
+        success: response.data.success,
+        hasUser: !!response.data.user,
+        hasAdmin: !!response.data.admin,
+        tokenLength: response.data.token?.length || 0
+      });
+      
       if (response.data.success) {
         // Token'ı localStorage'a kaydet
         localStorage.setItem('authToken', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
+        console.log('🔐 [AUTH SERVICE] Token ve user localStorage\'a kaydedildi');
       }
       
       return response.data;
@@ -130,8 +107,62 @@ export const authService = {
       // Hata detaylarını hassas veri olmadan logla
       const status = error?.response?.status;
       const message = error?.response?.data?.message || error?.message;
-      console.error('Login error:', { status, message });
+      console.error('🔐 [AUTH SERVICE] Login error:', { 
+        status, 
+        message,
+        errorType: error.constructor.name,
+        hasResponse: !!error.response,
+        responseData: error.response?.data
+      });
       throw new Error(error.response?.data?.message || 'Giriş yapılırken bir hata oluştu');
+    }
+  },
+
+  // Admin login fonksiyonu
+  async adminLogin(credentials: AdminLoginRequest): Promise<LoginResponse> {
+    console.log('🔐 [AUTH SERVICE] Admin login başlatılıyor:', { email: credentials.adminEmail });
+    
+    try {
+      // Admin şifresi hash'lenmeden gönderiliyor (veritabanında normal string)
+      const formData = new FormData();
+      formData.append('adminEmail', credentials.adminEmail);
+      formData.append('adminPassword', credentials.adminPassword);
+      
+      console.log('🔐 [AUTH SERVICE] Admin FormData hazırlandı, gönderiliyor...');
+      
+      const response = await apiClient.post<LoginResponse>('/Auth/admin-login', formData, {
+        headers: { 
+          'Content-Type': 'multipart/form-data' 
+        }
+      });
+      
+      console.log('🔐 [AUTH SERVICE] Admin login response alındı:', {
+        success: response.data.success,
+        hasUser: !!response.data.user,
+        hasAdmin: !!response.data.admin,
+        tokenLength: response.data.token?.length || 0
+      });
+      
+      if (response.data.success) {
+        // Token'ı localStorage'a kaydet
+        localStorage.setItem('authToken', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.admin || response.data.user));
+        console.log('🔐 [AUTH SERVICE] Admin token ve user localStorage\'a kaydedildi');
+      }
+      
+      return response.data;
+    } catch (error: any) {
+      // Hata detaylarını hassas veri olmadan logla
+      const status = error?.response?.status;
+      const message = error?.response?.data?.message || error?.message;
+      console.error('🔐 [AUTH SERVICE] Admin login error:', { 
+        status, 
+        message,
+        errorType: error.constructor.name,
+        hasResponse: !!error.response,
+        responseData: error.response?.data
+      });
+      throw new Error(error.response?.data?.message || 'Admin girişi yapılırken bir hata oluştu');
     }
   },
 

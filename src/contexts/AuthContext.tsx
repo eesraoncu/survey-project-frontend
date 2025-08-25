@@ -8,7 +8,10 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isAdmin?: boolean;
+  hasRole?: (role: string) => boolean;
   login: (email: string, password: string) => Promise<boolean>;
+  adminLogin: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   register: (userData: any) => Promise<boolean>;
   loginWithGoogle: (accessToken: string) => Promise<boolean>;
@@ -59,16 +62,65 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
+    console.log('🔐 [AUTH CONTEXT] Login başlatılıyor:', { email });
+    
+    // Önce standart login'i dene; başarısız olursa admin-login fallback uygula
     try {
+      console.log('🔐 [AUTH CONTEXT] Standart login deneniyor...');
       const response = await authService.login({ userEmail: email, userPassword: password });
+      console.log('🔐 [AUTH CONTEXT] Standart login response:', { 
+        success: response.success, 
+        hasUser: !!response.user,
+        hasAdmin: !!response.admin 
+      });
       
-      if (response.success) {
+      if (response.success && response.user) {
+        console.log('🔐 [AUTH CONTEXT] Standart login başarılı, user set ediliyor');
         setUser(response.user);
         return true;
       }
+    } catch (error) {
+      console.warn('🔐 [AUTH CONTEXT] Standart login başarısız, admin fallback denenecek.', error);
+    }
+
+    // Admin fallback
+    try {
+      console.log('🔐 [AUTH CONTEXT] Admin fallback deneniyor...');
+      const adminResp = await authService.adminLogin({ adminEmail: email, adminPassword: password });
+      console.log('🔐 [AUTH CONTEXT] Admin fallback response:', { 
+        success: adminResp.success, 
+        hasUser: !!adminResp.user,
+        hasAdmin: !!adminResp.admin 
+      });
+      
+      const userData = adminResp.admin || adminResp.user;
+      if (adminResp.success && userData) {
+        console.log('🔐 [AUTH CONTEXT] Admin fallback başarılı, user set ediliyor');
+        setUser(userData);
+        return true;
+      }
+    } catch (adminErr) {
+      console.error('🔐 [AUTH CONTEXT] Admin login fallback da başarısız oldu.', adminErr);
+    }
+
+    console.log('🔐 [AUTH CONTEXT] Tüm login denemeleri başarısız');
+    return false;
+  };
+
+  const adminLogin = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const response = await authService.adminLogin({ adminEmail: email, adminPassword: password });
+      
+      if (response.success) {
+        const userData = response.admin || response.user;
+        if (userData) {
+          setUser(userData);
+          return true;
+        }
+      }
       return false;
     } catch (error) {
-      console.error('AuthContext login error:', error);
+      console.error('AuthContext admin login error:', error);
       return false;
     }
   };
@@ -82,7 +134,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await authService.register(userData);
       
-      if (response.success) {
+      if (response.success && response.user) {
         setUser(response.user);
         return true;
       }
@@ -145,7 +197,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     isAuthenticated: !!user,
     isLoading,
+    isAdmin: (user?.roles || []).some(r => r.toLowerCase() === 'admin' || r.toLowerCase() === 'administrator'),
+    hasRole: (role: string) => (user?.roles || []).some(r => r.toLowerCase() === role.toLowerCase()),
     login,
+    adminLogin,
     logout,
     register,
     loginWithGoogle,

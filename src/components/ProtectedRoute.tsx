@@ -4,10 +4,11 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  requiredRole?: string;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
+  const { isAuthenticated, isLoading, hasRole } = useAuth();
   const location = useLocation();
 
   // Loading durumunda spinner göster
@@ -22,6 +23,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   // Giriş yapmamış kullanıcıları login sayfasına yönlendir
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // Rol kontrolü
+  if (requiredRole && !(hasRole && hasRole(requiredRole))) {
+    return <Navigate to="/home" replace />;
   }
 
   // Giriş yapmış kullanıcılar için içeriği göster

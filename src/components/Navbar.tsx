@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 const Navbar = () => {
   const location = useLocation()
   const navigate = useNavigate()
-  const { user, isAuthenticated, logout } = useAuth()
+  const { user, isAuthenticated, logout, isAdmin } = useAuth()
   const { language, setLanguage } = useLanguage()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
@@ -353,7 +353,7 @@ const Navbar = () => {
             
             {/* Ana navigasyon linkleri - Desktop */}
             <div className="hidden lg:flex items-center space-x-1">
-              {navItems.map((item) => (
+              {[...navItems, ...(isAdmin ? [{ path: '/admin/logs', label: language === 'en' ? 'Logs' : 'Loglar', icon: <BarChart3 className="w-4 h-4" /> }] : [])].map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
@@ -466,7 +466,7 @@ const Navbar = () => {
         {isMobileMenuOpen && (
           <div className="lg:hidden py-4 border-t border-slate-700/50 bg-slate-900/95 backdrop-blur-sm">
             <div className="flex flex-col space-y-2">
-              {navItems.map((item) => (
+              {[...navItems, ...(isAdmin ? [{ path: '/admin/logs', label: language === 'en' ? 'Logs' : 'Loglar', icon: <BarChart3 className="w-4 h-4" /> }] : [])].map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}

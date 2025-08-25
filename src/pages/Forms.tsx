@@ -575,7 +575,7 @@ const Forms: React.FC = () => {
                       <div className="grid grid-cols-3 gap-4 mb-4">
                         <div className="text-center">
                           <div className="text-xl font-semibold text-white">{survey.responses || 0}</div>
-                          <div className="text-xs text-purple-300">Response</div>
+                          <div className="text-xs text-purple-300">{t('Yanıt')}</div>
                         </div>
                         <div className="text-center">
                           <div className="text-xl font-semibold text-white">{survey.views || 0}</div>
@@ -612,12 +612,12 @@ const Forms: React.FC = () => {
                 <table className="w-full">
                   <thead className="bg-white/10">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Survey</th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Category</th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Responses</th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Last Update</th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Actions</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">{t('Survey')}</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">{t('Status')}</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">{t('Category')}</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">{t('Responses')}</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">{t('Last Update')}</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">{t('Actions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/10">
@@ -642,7 +642,7 @@ const Forms: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-3 py-1 text-xs font-medium rounded-full bg-gradient-to-r ${getStatusColor(survey.status || 'draft')} text-white`}>
-                            {getStatusText(survey.status || 'draft')}
+                            {t(getStatusText(survey.status || 'draft'))}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
